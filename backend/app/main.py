@@ -1,0 +1,42 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.database import Base, engine
+import app.models  # ensure all models are registered before create_all
+
+from app.routers import (
+    dashboard,
+    products,
+    categories,
+    forecasts,
+    promotions,
+    reports,
+    integrations,
+    pipeline,
+)
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="StockSeer API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(dashboard.router,    prefix="/api/dashboard",             tags=["Dashboard"])
+app.include_router(products.router,     prefix="/api/products",              tags=["Products"])
+app.include_router(categories.router,   prefix="/api/categories",            tags=["Categories"])
+app.include_router(forecasts.router,    prefix="/api/forecasts",             tags=["Forecasts"])
+app.include_router(promotions.router,   prefix="/api/promotions",            tags=["Promotions"])
+app.include_router(reports.router,      prefix="/api/reports",               tags=["Reports"])
+app.include_router(integrations.router, prefix="/api/settings/integrations", tags=["Integrations"])
+app.include_router(pipeline.router,     prefix="/api/pipeline",              tags=["Pipeline"])
+
+
+@app.get("/health", tags=["Health"])
+def health():
+    return {"status": "ok"}

@@ -9,6 +9,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth.dependencies import require_permission
+from app.auth.context import TenantContext
 from app.models.pipeline import PipelineJob
 from app.schemas.pipeline import (
     PipelineJobAccepted, PipelineJobResult, PipelineJobListItem, ModelResult,
@@ -50,6 +52,7 @@ def _job_to_result(job: PipelineJob) -> PipelineJobResult:
 async def upload_csv(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    ctx: TenantContext = Depends(require_permission("forecast:write")),
     db: Session = Depends(get_db),
 ):
     if not file.filename.endswith(".csv"):
@@ -71,6 +74,7 @@ async def upload_csv(
         log_text="",
         created_at=now,
         updated_at=now,
+        tenant_id=ctx.tenant.id,
     )
     db.add(job)
     db.commit()
@@ -85,9 +89,13 @@ async def upload_csv(
 
 
 @router.get("/jobs", response_model=list[PipelineJobListItem])
-def list_jobs(db: Session = Depends(get_db)):
+def list_jobs(
+    ctx: TenantContext = Depends(require_permission("forecast:read")),
+    db: Session = Depends(get_db),
+):
     jobs = (
         db.query(PipelineJob)
+        .filter(PipelineJob.tenant_id == ctx.tenant.id)
         .order_by(PipelineJob.created_at.desc())
         .limit(10)
         .all()
@@ -105,27 +113,36 @@ def list_jobs(db: Session = Depends(get_db)):
 
 
 @router.get("/jobs/{job_id}", response_model=PipelineJobResult)
-def get_job(job_id: str, db: Session = Depends(get_db)):
-    job = db.query(PipelineJob).filter(PipelineJob.job_id == job_id).first()
+def get_job(
+    job_id: str,
+    ctx: TenantContext = Depends(require_permission("forecast:read")),
+    db: Session = Depends(get_db),
+):
+    job = db.query(PipelineJob).filter(
+        PipelineJob.job_id == job_id,
+        PipelineJob.tenant_id == ctx.tenant.id,
+    ).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return _job_to_result(job)
 
 
 @router.get("/jobs/{job_id}/stream")
-async def stream_job_logs(job_id: str, db: Session = Depends(get_db)):
-    """
-    SSE endpoint that tails the pipeline job's log_text column.
-    The client receives one JSON event per log line as the job runs.
-    """
-    job = db.query(PipelineJob).filter(PipelineJob.job_id == job_id).first()
+async def stream_job_logs(
+    job_id: str,
+    ctx: TenantContext = Depends(require_permission("forecast:read")),
+    db: Session = Depends(get_db),
+):
+    job = db.query(PipelineJob).filter(
+        PipelineJob.job_id == job_id,
+        PipelineJob.tenant_id == ctx.tenant.id,
+    ).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
     async def event_generator():
         sent_lines = 0
         while True:
-            # Refresh the job from DB on each poll tick
             db.expire(job)
             db.refresh(job)
             log_text = job.log_text or ""
@@ -135,7 +152,6 @@ async def stream_job_logs(job_id: str, db: Session = Depends(get_db)):
                 sent_lines += 1
 
             if job.status in ("completed", "failed"):
-                # Flush any remaining lines then close
                 yield f"data: {json.dumps({'step': 'done', 'status': job.status})}\n\n"
                 break
 

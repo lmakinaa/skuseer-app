@@ -4,6 +4,8 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth.dependencies import require_permission
+from app.auth.context import TenantContext
 from app.models import Report
 from app.schemas.report import ReportGenerateRequest, ReportScheduleRequest, ReportResponse
 
@@ -11,18 +13,27 @@ router = APIRouter()
 
 
 @router.get("", response_model=list[ReportResponse])
-def list_reports(db: Session = Depends(get_db)):
-    return [ReportResponse.model_validate(r) for r in db.query(Report).all()]
+def list_reports(
+    ctx: TenantContext = Depends(require_permission("report:read")),
+    db: Session = Depends(get_db),
+):
+    rows = db.query(Report).filter(Report.tenant_id == ctx.tenant.id).all()
+    return [ReportResponse.model_validate(r) for r in rows]
 
 
 @router.post("/generate", response_model=ReportResponse, status_code=202)
-def generate_report(body: ReportGenerateRequest, db: Session = Depends(get_db)):
+def generate_report(
+    body: ReportGenerateRequest,
+    ctx: TenantContext = Depends(require_permission("report:write")),
+    db: Session = Depends(get_db),
+):
     report = Report(
         name=body.name,
         type=body.type,
         date=datetime.date.today().strftime("%b %d, %Y"),
         status="generating",
         recipients=body.recipients,
+        tenant_id=ctx.tenant.id,
     )
     db.add(report)
     db.commit()
@@ -31,13 +42,18 @@ def generate_report(body: ReportGenerateRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/schedule", response_model=ReportResponse, status_code=202)
-def schedule_report(body: ReportScheduleRequest, db: Session = Depends(get_db)):
+def schedule_report(
+    body: ReportScheduleRequest,
+    ctx: TenantContext = Depends(require_permission("report:write")),
+    db: Session = Depends(get_db),
+):
     report = Report(
         name=body.name,
         type=body.type,
         date=body.scheduled_date,
         status="scheduled",
         recipients=body.recipients,
+        tenant_id=ctx.tenant.id,
     )
     db.add(report)
     db.commit()
@@ -46,8 +62,15 @@ def schedule_report(body: ReportScheduleRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/{report_id}/download")
-def download_report(report_id: int, db: Session = Depends(get_db)):
-    report = db.query(Report).filter(Report.id == report_id).first()
+def download_report(
+    report_id: int,
+    ctx: TenantContext = Depends(require_permission("report:read")),
+    db: Session = Depends(get_db),
+):
+    report = db.query(Report).filter(
+        Report.id == report_id,
+        Report.tenant_id == ctx.tenant.id,
+    ).first()
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     if report.status != "delivered":

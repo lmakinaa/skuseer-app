@@ -1,30 +1,85 @@
 """
-Seed the SQLite database with mock data that mirrors frontend/src/data/mockData.ts.
+Seed the SQLite database with mock data.
 Run from the backend/ directory:  python seed.py
 """
-import sys, os, math, datetime
+import sys, os, math, datetime, uuid
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from app.database import engine, SessionLocal, Base
+from app.database import SessionLocal
 from app.models import (
+    Tenant, Permission, Role, RolePermission,
     Product, Category, ForecastModel, ChartDataPoint,
     Promotion, Report, Integration, ActivityLog,
 )
+from app.models.permission import ALL_PERMISSIONS
 
-Base.metadata.create_all(bind=engine)
+
+DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 
 
 def clear_tables(db):
     for model in [
+        RolePermission, Role,
         ActivityLog, ChartDataPoint, ForecastModel,
         Promotion, Report, Integration, Category, Product,
+        Permission, Tenant,
     ]:
         db.query(model).delete()
     db.commit()
 
 
-def seed_products(db):
+def seed_tenant(db):
+    tenant = Tenant(
+        id=DEFAULT_TENANT_ID,
+        name="FreshMart #247",
+        slug="freshmart-247",
+        location="Brooklyn, NY",
+        is_active=True,
+    )
+    db.add(tenant)
+    db.flush()
+    return tenant
+
+
+def seed_permissions(db):
+    perms = {}
+    for codename, description in ALL_PERMISSIONS:
+        p = Permission(id=str(uuid.uuid4()), codename=codename, description=description)
+        db.add(p)
+        perms[codename] = p
+    db.flush()
+    return perms
+
+
+def seed_roles(db, tenant_id, perms):
+    # Store Admin — all permissions
+    admin_role = Role(id=str(uuid.uuid4()), tenant_id=tenant_id, name="Store Admin", description="Full access to all store features", is_default=False)
+    db.add(admin_role)
+    db.flush()
+    for p in perms.values():
+        db.add(RolePermission(id=str(uuid.uuid4()), role_id=admin_role.id, permission_id=p.id))
+
+    # Store Manager — read + write (no delete)
+    manager_role = Role(id=str(uuid.uuid4()), tenant_id=tenant_id, name="Store Manager", description="Can view and edit, but not delete", is_default=True)
+    db.add(manager_role)
+    db.flush()
+    for codename, p in perms.items():
+        if "delete" not in codename:
+            db.add(RolePermission(id=str(uuid.uuid4()), role_id=manager_role.id, permission_id=p.id))
+
+    # Viewer — read only
+    viewer_role = Role(id=str(uuid.uuid4()), tenant_id=tenant_id, name="Viewer", description="Read-only access", is_default=False)
+    db.add(viewer_role)
+    db.flush()
+    for codename, p in perms.items():
+        if codename.endswith(":read"):
+            db.add(RolePermission(id=str(uuid.uuid4()), role_id=viewer_role.id, permission_id=p.id))
+
+    return admin_role, manager_role, viewer_role
+
+
+def seed_products(db, tenant_id):
     rows = [
         dict(id="DAI-001", name="Whole Milk 1gal",           category="Dairy",         price=4.29,  forecast=2340, last_month=2165, change=8,   accuracy=97.2, stock=485, reorder_point=200),
         dict(id="DAI-002", name="2% Milk 1gal",              category="Dairy",         price=4.19,  forecast=1980, last_month=1920, change=3,   accuracy=96.8, stock=412, reorder_point=180),
@@ -51,10 +106,10 @@ def seed_products(db):
         dict(id="HOU-050", name="Paper Towels 6pk",          category="Household",     price=8.99,  forecast=520,  last_month=510,  change=2,   accuracy=98.1, stock=340, reorder_point=120),
         dict(id="HOU-051", name="Dish Soap 22oz",            category="Household",     price=3.49,  forecast=440,  last_month=430,  change=2,   accuracy=97.8, stock=280, reorder_point=100),
     ]
-    db.add_all([Product(**r) for r in rows])
+    db.add_all([Product(tenant_id=tenant_id, **r) for r in rows])
 
 
-def seed_categories(db):
+def seed_categories(db, tenant_id):
     rows = [
         dict(name="Dairy",         products=342, accuracy=97.1, trend="up"),
         dict(name="Produce",       products=287, accuracy=95.8, trend="up"),
@@ -65,27 +120,26 @@ def seed_categories(db):
         dict(name="Snacks",        products=189, accuracy=95.3, trend="down"),
         dict(name="Household",     products=132, accuracy=98.1, trend="stable"),
     ]
-    db.add_all([Category(**r) for r in rows])
+    db.add_all([Category(tenant_id=tenant_id, **r) for r in rows])
 
 
-def seed_forecast_models(db):
+def seed_forecast_models(db, tenant_id):
     rows = [
         dict(name="ARIMA",    display_name="Trend Analyzer",     accuracy=91.3, status="active", detail="Finds repeating weekly & seasonal patterns"),
         dict(name="Prophet",  display_name="Smart Forecast",     accuracy=96.8, status="winner", detail="Best overall — adapts to weather, events & promos"),
         dict(name="XGBoost",  display_name="Pattern Finder",     accuracy=95.9, status="active", detail="Detects hidden relationships between products"),
         dict(name="LSTM",     display_name="Classic Predictor",  accuracy=88.7, status="active", detail="Simple & reliable for stable product lines"),
     ]
-    db.add_all([ForecastModel(**r) for r in rows])
+    db.add_all([ForecastModel(tenant_id=tenant_id, **r) for r in rows])
 
 
-def seed_chart_data(db):
-    """Replicates the deterministic part of CHART_DATA from mockData.ts (no random noise)."""
+def seed_chart_data(db, tenant_id):
     month_names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
     start = datetime.date(2024, 7, 1)
     points = []
     for i in range(90):
         d = start + datetime.timedelta(days=i)
-        day_of_week = d.weekday()  # Mon=0, Sun=6
+        day_of_week = d.weekday()
         weekend_boost = 1.35 if day_of_week >= 5 else 1.0
         base = 24000 + math.sin(i / 14) * 4000
         trend = i * 30
@@ -99,11 +153,11 @@ def seed_chart_data(db):
         upper = round(forecast * 1.06) if forecast else None
         lower = round(forecast * 0.94) if forecast else None
         label = f"{month_names[d.month - 1]} {d.day}"
-        points.append(ChartDataPoint(date=label, actual=actual, forecast=forecast, upper=upper, lower=lower))
+        points.append(ChartDataPoint(tenant_id=tenant_id, date=label, actual=actual, forecast=forecast, upper=upper, lower=lower))
     db.add_all(points)
 
 
-def seed_promotions(db):
+def seed_promotions(db, tenant_id):
     rows = [
         dict(name="Buy 2 Get 1 Free — Cereals",    status="active",    start_date="Sep 10", end_date="Sep 24", category="Bakery",     impact="+210%",       forecast_adjusted=True,  revenue="$12,400"),
         dict(name="Summer Beverage Blowout",        status="completed", start_date="Jul 1",  end_date="Jul 15", category="Beverages",  impact="+85%",        forecast_adjusted=True,  revenue="$28,600"),
@@ -112,10 +166,10 @@ def seed_promotions(db):
         dict(name="Fall Soup Season Kickoff",       status="scheduled", start_date="Oct 1",  end_date="Oct 14", category="Frozen",     impact="+30% (est.)", forecast_adjusted=False, revenue="—"),
         dict(name="Holiday Baking Essentials",      status="scheduled", start_date="Nov 15", end_date="Dec 5",  category="Bakery",     impact="+55% (est.)", forecast_adjusted=False, revenue="—"),
     ]
-    db.add_all([Promotion(**r) for r in rows])
+    db.add_all([Promotion(tenant_id=tenant_id, **r) for r in rows])
 
 
-def seed_reports(db):
+def seed_reports(db, tenant_id):
     rows = [
         dict(name="Monthly Performance — August 2024",    type="Performance", date="Sep 1, 2024",  status="delivered",  recipients="team@freshmart.com"),
         dict(name="Weekly Forecast Accuracy",              type="Accuracy",    date="Sep 8, 2024",  status="delivered",  recipients="maria@freshmart.com"),
@@ -124,32 +178,32 @@ def seed_reports(db):
         dict(name="Monthly Performance — September 2024",  type="Performance", date="Oct 1, 2024",  status="scheduled",  recipients="team@freshmart.com"),
         dict(name="Category Deep Dive: Beverages",         type="Category",    date="Sep 12, 2024", status="generating", recipients="maria@freshmart.com"),
     ]
-    db.add_all([Report(**r) for r in rows])
+    db.add_all([Report(tenant_id=tenant_id, **r) for r in rows])
 
 
-def seed_integrations(db):
+def seed_integrations(db, tenant_id):
     rows = [
-        dict(id="weather",    name="Weather & Climate",      description="Real-time weather data for your store locations. Automatically adjusts forecasts based on temperature, precipitation, and seasonal patterns.", provider="Visual Crossing",   status="connected",    last_synced_at=datetime.datetime.utcnow() - datetime.timedelta(minutes=2),  data_points="Temperature, precipitation, cloud cover, wind speed",           impact="Improved forecast accuracy by 4.2%"),
-        dict(id="holidays",   name="Local Holidays & Events",description="Public holidays, local festivals, sports events, and community gatherings that drive foot traffic changes.",                                  provider="PredictHQ",         status="connected",    last_synced_at=datetime.datetime.utcnow() - datetime.timedelta(hours=1),    data_points="Holidays, concerts, sports, festivals, school schedules",        impact="Prevented 23 overstock incidents this quarter"),
-        dict(id="pos",        name="Point of Sale",           description="Direct connection to your POS system for real-time sales data, transaction history, and promotion tracking.",                               provider="Square POS",        status="connected",    last_synced_at=datetime.datetime.utcnow(),                                   data_points="Transactions, discounts, returns, basket size",                  impact="Core data source — 1.2M transactions analyzed"),
-        dict(id="promotions", name="Promotions & Discounts",  description="Tracks all active, scheduled, and past promotions to separate organic demand from promotional spikes.",                                     provider="Internal Database", status="connected",    last_synced_at=datetime.datetime.utcnow(),                                   data_points="Discount type, duration, affected SKUs, lift %",                 impact="Normalized 47 promotional spikes in forecasts"),
-        dict(id="supplier",   name="Supplier Lead Times",     description="Monitors supplier delivery schedules and lead time variability to optimize reorder timing.",                                                provider="TradeGecko",        status="disconnected", last_synced_at=None,                                                         data_points="Lead times, delivery reliability, order minimums",               impact="Not yet connected"),
-        dict(id="competitor", name="Competitor Pricing",      description="Tracks competitor pricing for key SKUs to understand price-driven demand shifts.",                                                          provider="Prisync",           status="disconnected", last_synced_at=None,                                                         data_points="Competitor prices, price changes, promotions",                   impact="Not yet connected"),
+        dict(id="weather",    name="Weather & Climate",      description="Real-time weather data for your store locations.", provider="Visual Crossing",   status="connected",    last_synced_at=datetime.datetime.utcnow() - datetime.timedelta(minutes=2),  data_points="Temperature, precipitation, cloud cover, wind speed",  impact="Improved forecast accuracy by 4.2%"),
+        dict(id="holidays",   name="Local Holidays & Events",description="Public holidays, local festivals, sports events.", provider="PredictHQ",         status="connected",    last_synced_at=datetime.datetime.utcnow() - datetime.timedelta(hours=1),    data_points="Holidays, concerts, sports, festivals",                impact="Prevented 23 overstock incidents this quarter"),
+        dict(id="pos",        name="Point of Sale",           description="Direct connection to your POS system.",            provider="Square POS",        status="connected",    last_synced_at=datetime.datetime.utcnow(),                                   data_points="Transactions, discounts, returns, basket size",        impact="Core data source — 1.2M transactions analyzed"),
+        dict(id="promotions", name="Promotions & Discounts",  description="Tracks all active and past promotions.",           provider="Internal Database", status="connected",    last_synced_at=datetime.datetime.utcnow(),                                   data_points="Discount type, duration, affected SKUs, lift %",       impact="Normalized 47 promotional spikes in forecasts"),
+        dict(id="supplier",   name="Supplier Lead Times",     description="Monitors supplier delivery schedules.",            provider="TradeGecko",        status="disconnected", last_synced_at=None,                                                         data_points="Lead times, delivery reliability, order minimums",     impact="Not yet connected"),
+        dict(id="competitor", name="Competitor Pricing",      description="Tracks competitor pricing for key SKUs.",          provider="Prisync",           status="disconnected", last_synced_at=None,                                                         data_points="Competitor prices, price changes, promotions",         impact="Not yet connected"),
     ]
-    db.add_all([Integration(**r) for r in rows])
+    db.add_all([Integration(tenant_id=tenant_id, **r) for r in rows])
 
 
-def seed_activity_log(db):
+def seed_activity_log(db, tenant_id):
     now = datetime.datetime.utcnow()
     rows = [
-        dict(created_at=now - datetime.timedelta(minutes=2),  text="Forecast updated for Dairy category — 1,204 SKUs",                                              type="success"),
-        dict(created_at=now - datetime.timedelta(minutes=18), text="Weather alert: Cold front arriving Thu — adjusting frozen food forecast",                        type="warning"),
-        dict(created_at=now - datetime.timedelta(hours=1),    text="New promotion detected: BOGO on soft drinks — normalizing data",                                 type="info"),
-        dict(created_at=now - datetime.timedelta(hours=3),    text="Weekly model retraining complete — accuracy improved +0.3%",                                     type="success"),
-        dict(created_at=now - datetime.timedelta(hours=5),    text="Local event imported: County Fair Sep 20-22 — foot traffic +35%",                               type="warning"),
-        dict(created_at=now - datetime.timedelta(days=1),     text="Monthly report generated for August — sent to team@freshmart.com",                               type="info"),
+        dict(created_at=now - datetime.timedelta(minutes=2),  text="Forecast updated for Dairy category — 1,204 SKUs",                          type="success"),
+        dict(created_at=now - datetime.timedelta(minutes=18), text="Weather alert: Cold front arriving Thu — adjusting frozen food forecast",    type="warning"),
+        dict(created_at=now - datetime.timedelta(hours=1),    text="New promotion detected: BOGO on soft drinks — normalizing data",             type="info"),
+        dict(created_at=now - datetime.timedelta(hours=3),    text="Weekly model retraining complete — accuracy improved +0.3%",                 type="success"),
+        dict(created_at=now - datetime.timedelta(hours=5),    text="Local event imported: County Fair Sep 20-22 — foot traffic +35%",           type="warning"),
+        dict(created_at=now - datetime.timedelta(days=1),     text="Monthly report generated for August — sent to team@freshmart.com",           type="info"),
     ]
-    db.add_all([ActivityLog(**r) for r in rows])
+    db.add_all([ActivityLog(tenant_id=tenant_id, **r) for r in rows])
 
 
 def main():
@@ -157,22 +211,33 @@ def main():
     try:
         print("Clearing existing data...")
         clear_tables(db)
+
+        print("Seeding default tenant...")
+        tenant = seed_tenant(db)
+
+        print("Seeding permissions...")
+        perms = seed_permissions(db)
+
+        print("Seeding default roles...")
+        seed_roles(db, tenant.id, perms)
+
         print("Seeding products...")
-        seed_products(db)
+        seed_products(db, tenant.id)
         print("Seeding categories...")
-        seed_categories(db)
+        seed_categories(db, tenant.id)
         print("Seeding forecast models...")
-        seed_forecast_models(db)
+        seed_forecast_models(db, tenant.id)
         print("Seeding chart data (90 days)...")
-        seed_chart_data(db)
+        seed_chart_data(db, tenant.id)
         print("Seeding promotions...")
-        seed_promotions(db)
+        seed_promotions(db, tenant.id)
         print("Seeding reports...")
-        seed_reports(db)
+        seed_reports(db, tenant.id)
         print("Seeding integrations...")
-        seed_integrations(db)
+        seed_integrations(db, tenant.id)
         print("Seeding activity log...")
-        seed_activity_log(db)
+        seed_activity_log(db, tenant.id)
+
         db.commit()
         print("Done. Database seeded successfully.")
     except Exception as e:

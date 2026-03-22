@@ -1,10 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import Base, engine
-import app.models  # ensure all models are registered before create_all
-
 from app.routers import (
+    auth,
     dashboard,
     products,
     categories,
@@ -13,9 +11,10 @@ from app.routers import (
     reports,
     integrations,
     pipeline,
+    tenants,
+    roles,
+    admin,
 )
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="StockSeer API", version="1.0.0")
 
@@ -27,6 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router,         prefix="/api/auth",                  tags=["Auth"])
 app.include_router(dashboard.router,    prefix="/api/dashboard",             tags=["Dashboard"])
 app.include_router(products.router,     prefix="/api/products",              tags=["Products"])
 app.include_router(categories.router,   prefix="/api/categories",            tags=["Categories"])
@@ -35,6 +35,9 @@ app.include_router(promotions.router,   prefix="/api/promotions",            tag
 app.include_router(reports.router,      prefix="/api/reports",               tags=["Reports"])
 app.include_router(integrations.router, prefix="/api/settings/integrations", tags=["Integrations"])
 app.include_router(pipeline.router,     prefix="/api/pipeline",              tags=["Pipeline"])
+app.include_router(tenants.router,      prefix="/api/tenants",               tags=["Tenants"])
+app.include_router(roles.router,        prefix="/api/roles",                 tags=["Roles"])
+app.include_router(admin.router,        prefix="/api/admin",                 tags=["Admin"])
 
 
 @app.get("/health", tags=["Health"])

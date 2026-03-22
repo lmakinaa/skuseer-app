@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Text
+from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey
 from app.database import Base
 
 
@@ -6,6 +6,7 @@ class PipelineJob(Base):
     __tablename__ = "pipeline_jobs"
 
     job_id = Column(String, primary_key=True)
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=True, index=True)
     filename = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
     status = Column(String, nullable=False, default="queued")  # queued|running|completed|failed

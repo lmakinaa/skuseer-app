@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth.dependencies import require_permission
+from app.auth.context import TenantContext
 from app.models import Integration
 from app.schemas.integration import IntegrationResponse
 
@@ -37,13 +39,24 @@ def _to_response(integration: Integration) -> IntegrationResponse:
 
 
 @router.get("", response_model=list[IntegrationResponse])
-def list_integrations(db: Session = Depends(get_db)):
-    return [_to_response(i) for i in db.query(Integration).all()]
+def list_integrations(
+    ctx: TenantContext = Depends(require_permission("integration:read")),
+    db: Session = Depends(get_db),
+):
+    rows = db.query(Integration).filter(Integration.tenant_id == ctx.tenant.id).all()
+    return [_to_response(i) for i in rows]
 
 
 @router.post("/{integration_id}/connect", response_model=IntegrationResponse)
-def connect_integration(integration_id: str, db: Session = Depends(get_db)):
-    integration = db.query(Integration).filter(Integration.id == integration_id).first()
+def connect_integration(
+    integration_id: str,
+    ctx: TenantContext = Depends(require_permission("integration:write")),
+    db: Session = Depends(get_db),
+):
+    integration = db.query(Integration).filter(
+        Integration.id == integration_id,
+        Integration.tenant_id == ctx.tenant.id,
+    ).first()
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found")
     integration.status = "connected"
@@ -54,8 +67,15 @@ def connect_integration(integration_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{integration_id}/disconnect", response_model=IntegrationResponse)
-def disconnect_integration(integration_id: str, db: Session = Depends(get_db)):
-    integration = db.query(Integration).filter(Integration.id == integration_id).first()
+def disconnect_integration(
+    integration_id: str,
+    ctx: TenantContext = Depends(require_permission("integration:write")),
+    db: Session = Depends(get_db),
+):
+    integration = db.query(Integration).filter(
+        Integration.id == integration_id,
+        Integration.tenant_id == ctx.tenant.id,
+    ).first()
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found")
     integration.status = "disconnected"
@@ -65,8 +85,15 @@ def disconnect_integration(integration_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{integration_id}/refresh", response_model=IntegrationResponse)
-def refresh_integration(integration_id: str, db: Session = Depends(get_db)):
-    integration = db.query(Integration).filter(Integration.id == integration_id).first()
+def refresh_integration(
+    integration_id: str,
+    ctx: TenantContext = Depends(require_permission("integration:write")),
+    db: Session = Depends(get_db),
+):
+    integration = db.query(Integration).filter(
+        Integration.id == integration_id,
+        Integration.tenant_id == ctx.tenant.id,
+    ).first()
     if not integration:
         raise HTTPException(status_code=404, detail="Integration not found")
     if integration.status != "connected":

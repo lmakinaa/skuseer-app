@@ -1,51 +1,80 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as api from "@/lib/api";
+import { useTenant } from "@/auth/TenantContext";
+
+function useTenantId() {
+  const { currentTenant } = useTenant();
+  return currentTenant?.tenantId ?? "";
+}
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-export const useKpis = () =>
-  useQuery({ queryKey: ["dashboard", "kpis"], queryFn: api.getDashboardKpis });
+export const useKpis = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["dashboard", "kpis", tid], queryFn: api.getDashboardKpis, enabled: !!tid });
+};
 
-export const useForecastChart = () =>
-  useQuery({ queryKey: ["dashboard", "chart"], queryFn: api.getForecastChart });
+export const useForecastChart = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["dashboard", "chart", tid], queryFn: api.getForecastChart, enabled: !!tid });
+};
 
-export const useActivity = () =>
-  useQuery({ queryKey: ["dashboard", "activity"], queryFn: api.getActivity, refetchInterval: 30_000 });
+export const useActivity = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["dashboard", "activity", tid], queryFn: api.getActivity, refetchInterval: 30_000, enabled: !!tid });
+};
 
-export const useTopProducts = () =>
-  useQuery({ queryKey: ["dashboard", "topProducts"], queryFn: api.getTopProducts });
+export const useTopProducts = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["dashboard", "topProducts", tid], queryFn: api.getTopProducts, enabled: !!tid });
+};
 
-export const useInsights = () =>
-  useQuery({ queryKey: ["dashboard", "insights"], queryFn: api.getInsights });
+export const useInsights = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["dashboard", "insights", tid], queryFn: api.getInsights, enabled: !!tid });
+};
 
 // ── Products ──────────────────────────────────────────────────────────────────
-export const useProducts = (search: string, category: string) =>
-  useQuery({
-    queryKey: ["products", search, category],
+export const useProducts = (search: string, category: string) => {
+  const tid = useTenantId();
+  return useQuery({
+    queryKey: ["products", tid, search, category],
     queryFn: () => api.getProducts(search, category),
     placeholderData: (prev) => prev,
+    enabled: !!tid,
   });
+};
 
-export const useProduct = (id: string) =>
-  useQuery({
-    queryKey: ["product", id],
+export const useProduct = (id: string) => {
+  const tid = useTenantId();
+  return useQuery({
+    queryKey: ["product", tid, id],
     queryFn: () => api.getProduct(id),
-    enabled: !!id,
+    enabled: !!id && !!tid,
   });
+};
 
 // ── Categories ────────────────────────────────────────────────────────────────
-export const useCategories = () =>
-  useQuery({ queryKey: ["categories"], queryFn: api.getCategories });
+export const useCategories = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["categories", tid], queryFn: api.getCategories, enabled: !!tid });
+};
 
 // ── Forecasts ─────────────────────────────────────────────────────────────────
-export const useForecastModels = () =>
-  useQuery({ queryKey: ["forecastModels"], queryFn: api.getForecastModels });
+export const useForecastModels = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["forecastModels", tid], queryFn: api.getForecastModels, enabled: !!tid });
+};
 
-export const useAccuracyByCategory = () =>
-  useQuery({ queryKey: ["accuracyByCategory"], queryFn: api.getAccuracyByCategory });
+export const useAccuracyByCategory = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["accuracyByCategory", tid], queryFn: api.getAccuracyByCategory, enabled: !!tid });
+};
 
 // ── Promotions ────────────────────────────────────────────────────────────────
-export const usePromotions = () =>
-  useQuery({ queryKey: ["promotions"], queryFn: () => api.getPromotions() });
+export const usePromotions = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["promotions", tid], queryFn: () => api.getPromotions(), enabled: !!tid });
+};
 
 export const useCreatePromotion = () => {
   const qc = useQueryClient();
@@ -64,8 +93,10 @@ export const useDeletePromotion = () => {
 };
 
 // ── Reports ───────────────────────────────────────────────────────────────────
-export const useReports = () =>
-  useQuery({ queryKey: ["reports"], queryFn: api.getReports });
+export const useReports = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["reports", tid], queryFn: api.getReports, enabled: !!tid });
+};
 
 export const useGenerateReport = () => {
   const qc = useQueryClient();
@@ -77,8 +108,10 @@ export const useGenerateReport = () => {
 };
 
 // ── Integrations ──────────────────────────────────────────────────────────────
-export const useIntegrations = () =>
-  useQuery({ queryKey: ["integrations"], queryFn: api.getIntegrations });
+export const useIntegrations = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["integrations", tid], queryFn: api.getIntegrations, enabled: !!tid });
+};
 
 export const useConnectIntegration = () => {
   const qc = useQueryClient();
@@ -108,13 +141,15 @@ export const useRefreshIntegration = () => {
 export const useUploadCsv = () =>
   useMutation({ mutationFn: api.uploadCsv });
 
-export const usePipelineJob = (jobId: string | null) =>
-  useQuery({
-    queryKey: ["pipelineJob", jobId],
+export const usePipelineJob = (jobId: string | null) => {
+  const tid = useTenantId();
+  return useQuery({
+    queryKey: ["pipelineJob", tid, jobId],
     queryFn: () => api.getPipelineJob(jobId!),
-    enabled: !!jobId,
+    enabled: !!jobId && !!tid,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status === "completed" || status === "failed" ? false : 2000;
     },
   });
+};

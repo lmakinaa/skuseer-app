@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth.dependencies import require_permission
+from app.auth.context import TenantContext
 from app.models import Product
 from app.schemas.product import (
     ProductListResponse, ProductDetailResponse,
@@ -18,9 +20,10 @@ def list_products(
     category: str = Query(default="All", description="Filter by category"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
+    ctx: TenantContext = Depends(require_permission("product:read")),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Product)
+    query = db.query(Product).filter(Product.tenant_id == ctx.tenant.id)
     if search:
         like = f"%{search}%"
         query = query.filter(
@@ -40,12 +43,18 @@ def list_products(
 
 
 @router.get("/{product_id}", response_model=ProductDetailResponse)
-def get_product(product_id: str, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
+def get_product(
+    product_id: str,
+    ctx: TenantContext = Depends(require_permission("product:read")),
+    db: Session = Depends(get_db),
+):
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.tenant_id == ctx.tenant.id,
+    ).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Generate 60-day chart data (30 actual + 30 forecast) from product stats
     daily_avg = product.forecast / 30
     chart_data = []
     for day in range(1, 61):
@@ -63,7 +72,6 @@ def get_product(product_id: str, db: Session = Depends(get_db)):
                 forecast=round(daily_avg * variation),
             ))
 
-    # AI insights derived from product data
     insights: list[AIInsight] = []
     sign = "+" if product.change >= 0 else ""
     insights.append(AIInsight(

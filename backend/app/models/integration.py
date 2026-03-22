@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, ForeignKey
 from app.database import Base
 
 
@@ -6,6 +6,7 @@ class Integration(Base):
     __tablename__ = "integrations"
 
     id = Column(String, primary_key=True)           # "weather", "holidays", etc.
+    tenant_id = Column(String, ForeignKey("tenants.id"), nullable=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=False)
     provider = Column(String, nullable=False)

@@ -1,7 +1,13 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
+// ── Auth token & tenant injection ───────────────────────────────────────────
+let _accessToken: string | null = null;
+let _tenantId: string | null = null;
+
+export function setAuthToken(token: string | null) { _accessToken = token; }
+export function setTenantId(id: string | null) { _tenantId = id; }
+
 // ── camelCase transform ───────────────────────────────────────────────────────
-// Converts snake_case keys from the API into camelCase so components stay clean.
 function toCamel(s: string): string {
   return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 }
@@ -18,9 +24,16 @@ function camelizeKeys(obj: any): any {
 }
 
 // ── base fetch ────────────────────────────────────────────────────────────────
+function authHeaders(): Record<string, string> {
+  const h: Record<string, string> = {};
+  if (_accessToken) h["Authorization"] = `Bearer ${_accessToken}`;
+  if (_tenantId) h["X-Tenant-ID"] = _tenantId;
+  return h;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: { "Content-Type": "application/json", ...authHeaders(), ...init?.headers },
     ...init,
   });
   if (!res.ok) {
@@ -194,7 +207,107 @@ export interface PipelineJobResult {
   filename?: string;
 }
 
+// ── Auth / Tenant / Role types ────────────────────────────────────────────────
+export interface UserResponse {
+  id: string;
+  email: string;
+  fullName: string | null;
+  isPlatformAdmin: boolean;
+}
+
+export interface TenantMembershipResponse {
+  tenantId: string;
+  tenantName: string;
+  tenantSlug: string;
+  roleId: string;
+  roleName: string;
+}
+
+export interface MeResponse {
+  user: UserResponse;
+  tenants: TenantMembershipResponse[];
+}
+
+export interface TenantResponse {
+  id: string;
+  name: string;
+  slug: string;
+  location: string | null;
+  isActive: boolean;
+  createdAt: string | null;
+  memberCount?: number;
+}
+
+export interface MemberResponse {
+  userId: string;
+  email: string;
+  fullName: string | null;
+  roleId: string;
+  roleName: string;
+  isActive: boolean;
+  acceptedAt: string | null;
+}
+
+export interface PermissionItem {
+  id: string;
+  codename: string;
+  description: string | null;
+}
+
+export interface RoleResponse {
+  id: string;
+  tenantId: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+}
+
+export interface RoleWithPermissions extends RoleResponse {
+  permissions: PermissionItem[];
+}
+
 // ── API functions ─────────────────────────────────────────────────────────────
+
+// Auth
+export const getMe = () => request<MeResponse>("/api/auth/me");
+
+// Tenant
+export const getCurrentTenant = () => request<TenantResponse>("/api/tenants/current");
+export const updateCurrentTenant = (body: { name?: string; location?: string }) =>
+  request<TenantResponse>("/api/tenants/current", { method: "PATCH", body: JSON.stringify(body) });
+export const getTenantMembers = () => request<MemberResponse[]>("/api/tenants/current/members");
+export const inviteMember = (email: string, roleId: string) =>
+  request<MemberResponse>("/api/tenants/current/members/invite", {
+    method: "POST", body: JSON.stringify({ email, role_id: roleId }),
+  });
+export const removeMember = (userId: string) =>
+  fetch(`${BASE_URL}/api/tenants/current/members/${userId}`, { method: "DELETE", headers: authHeaders() });
+export const changeMemberRole = (userId: string, roleId: string) =>
+  request<MemberResponse>(`/api/tenants/current/members/${userId}/role`, {
+    method: "PATCH", body: JSON.stringify({ role_id: roleId }),
+  });
+
+// Roles
+export const getRoles = () => request<RoleResponse[]>("/api/roles/");
+export const createRole = (body: { name: string; description?: string }) =>
+  request<RoleResponse>("/api/roles/", { method: "POST", body: JSON.stringify(body) });
+export const getRolePermissions = (roleId: string) =>
+  request<RoleWithPermissions>(`/api/roles/${roleId}`);
+export const setRolePermissions = (roleId: string, permissionIds: string[]) =>
+  request<RoleWithPermissions>(`/api/roles/${roleId}/permissions`, {
+    method: "PUT", body: JSON.stringify({ permission_ids: permissionIds }),
+  });
+export const deleteRole = (roleId: string) =>
+  fetch(`${BASE_URL}/api/roles/${roleId}`, { method: "DELETE", headers: authHeaders() });
+export const getAllPermissions = () => request<PermissionItem[]>("/api/roles/permissions");
+
+// Admin
+export const getAdminTenants = () => request<TenantResponse[]>("/api/admin/tenants");
+export const createTenant = (body: { name: string; slug: string; location?: string }) =>
+  request<TenantResponse>("/api/admin/tenants", { method: "POST", body: JSON.stringify(body) });
+export const getAdminUsers = () => request<UserResponse[]>("/api/admin/users");
+export const togglePlatformAdmin = (userId: string) =>
+  request<UserResponse>(`/api/admin/users/${userId}`, { method: "PATCH" });
 
 // Dashboard
 export const getDashboardKpis = () => request<KPI[]>("/api/dashboard/kpis");
@@ -237,7 +350,7 @@ export const createPromotion = (body: PromotionCreate) =>
   });
 
 export const deletePromotion = (id: number) =>
-  fetch(`${BASE_URL}/api/promotions/${id}`, { method: "DELETE" });
+  fetch(`${BASE_URL}/api/promotions/${id}`, { method: "DELETE", headers: authHeaders() });
 
 // Reports
 export const getReports = () => request<Report[]>("/api/reports");
@@ -264,7 +377,11 @@ export const refreshIntegration = (id: string) =>
 export const uploadCsv = async (file: File) => {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(`${BASE_URL}/api/pipeline/upload`, { method: "POST", body: form });
+  const res = await fetch(`${BASE_URL}/api/pipeline/upload`, {
+    method: "POST",
+    body: form,
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(await res.text());
   return camelizeKeys(await res.json()) as { jobId: string; status: string; message: string };
 };

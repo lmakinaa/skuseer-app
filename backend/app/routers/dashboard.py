@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth.dependencies import require_permission
+from app.auth.context import TenantContext
 from app.models import ChartDataPoint as ChartDataPointModel, ActivityLog as ActivityLogModel, Product
 from app.schemas.dashboard import (
     KPI, ForecastChartResponse, ChartDataPoint,
@@ -14,8 +16,11 @@ router = APIRouter()
 
 
 @router.get("/kpis", response_model=list[KPI])
-def get_kpis(db: Session = Depends(get_db)):
-    product_count = db.query(Product).count()
+def get_kpis(
+    ctx: TenantContext = Depends(require_permission("product:read")),
+    db: Session = Depends(get_db),
+):
+    product_count = db.query(Product).filter(Product.tenant_id == ctx.tenant.id).count()
     return [
         KPI(label="Forecast Accuracy",  value="96.8%",  delta="+2.1% vs last month",      positive=True),
         KPI(label="Expected Revenue",   value="$2.4M",  delta="+12.4% vs last year",       positive=True),
@@ -25,8 +30,16 @@ def get_kpis(db: Session = Depends(get_db)):
 
 
 @router.get("/forecast-chart", response_model=ForecastChartResponse)
-def get_forecast_chart(db: Session = Depends(get_db)):
-    points = db.query(ChartDataPointModel).order_by(ChartDataPointModel.id).all()
+def get_forecast_chart(
+    ctx: TenantContext = Depends(require_permission("product:read")),
+    db: Session = Depends(get_db),
+):
+    points = (
+        db.query(ChartDataPointModel)
+        .filter(ChartDataPointModel.tenant_id == ctx.tenant.id)
+        .order_by(ChartDataPointModel.id)
+        .all()
+    )
     data = [
         ChartDataPoint(
             date=p.date,
@@ -41,9 +54,13 @@ def get_forecast_chart(db: Session = Depends(get_db)):
 
 
 @router.get("/activity", response_model=list[ActivityLogItem])
-def get_activity(db: Session = Depends(get_db)):
+def get_activity(
+    ctx: TenantContext = Depends(require_permission("product:read")),
+    db: Session = Depends(get_db),
+):
     logs = (
         db.query(ActivityLogModel)
+        .filter(ActivityLogModel.tenant_id == ctx.tenant.id)
         .order_by(ActivityLogModel.created_at.desc())
         .limit(20)
         .all()
@@ -67,9 +84,13 @@ def get_activity(db: Session = Depends(get_db)):
 
 
 @router.get("/top-products", response_model=list[TopProduct])
-def get_top_products(db: Session = Depends(get_db)):
+def get_top_products(
+    ctx: TenantContext = Depends(require_permission("product:read")),
+    db: Session = Depends(get_db),
+):
     products = (
         db.query(Product)
+        .filter(Product.tenant_id == ctx.tenant.id)
         .order_by(Product.forecast.desc())
         .limit(5)
         .all()
@@ -88,7 +109,9 @@ def get_top_products(db: Session = Depends(get_db)):
 
 
 @router.get("/insights", response_model=InsightsResponse)
-def get_insights():
+def get_insights(
+    ctx: TenantContext = Depends(require_permission("product:read")),
+):
     return InsightsResponse(
         weather=WEATHER_INSIGHTS,
         events=EVENT_INSIGHTS,

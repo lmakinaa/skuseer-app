@@ -1,0 +1,104 @@
+{
+  "realm": "stockseer",
+  "enabled": true,
+  "displayName": "StockSeer",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+
+  "roles": {
+    "realm": [
+      {
+        "name": "platform_admin",
+        "description": "Platform-level administrator with access to the back-office"
+      },
+      {
+        "name": "default-roles-stockseer",
+        "description": "Default role for all users",
+        "composite": false
+      }
+    ]
+  },
+
+  "defaultDefaultClientScopes": [
+    "openid",
+    "profile",
+    "email"
+  ],
+
+  "clients": [
+    {
+      "clientId": "stockseer-frontend",
+      "name": "StockSeer Frontend",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "rootUrl": "http://localhost:8080",
+      "baseUrl": "http://localhost:8080",
+      "redirectUris": [
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:8080/*"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email"
+      ]
+    }
+  ],
+
+  "identityProviders": [
+    {
+      "alias": "google",
+      "providerId": "google",
+      "enabled": false,
+      "trustEmail": true,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "GOOGLE_CLIENT_ID_PLACEHOLDER",
+        "clientSecret": "GOOGLE_CLIENT_SECRET_PLACEHOLDER",
+        "defaultScope": "openid profile email",
+        "syncMode": "IMPORT"
+      }
+    },
+    {
+      "alias": "microsoft",
+      "displayName": "Azure AD",
+      "providerId": "microsoft",
+      "enabled": false,
+      "trustEmail": true,
+      "firstBrokerLoginFlowAlias": "first broker login",
+      "config": {
+        "clientId": "AZURE_CLIENT_ID_PLACEHOLDER",
+        "clientSecret": "AZURE_CLIENT_SECRET_PLACEHOLDER",
+        "defaultScope": "openid profile email",
+        "syncMode": "IMPORT"
+      }
+    }
+  ],
+
+  "smtpServer": {
+    "host": "smtp.zoho.com",
+    "port": "587",
+    "starttls": "true",
+    "auth": "true",
+    "user": "SMTP_USER_PLACEHOLDER",
+    "password": "SMTP_PASSWORD_PLACEHOLDER",
+    "from": "noreply@yourdomain.com",
+    "fromDisplayName": "StockSeer"
+  }
+}

@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("", response_model=list[PromotionResponse])
 def list_promotions(
     status: Optional[str] = Query(default=None, description="Filter by status: active|scheduled|completed"),
-    ctx: TenantContext = Depends(require_permission("product:read")),
+    ctx: TenantContext = Depends(require_permission("promotions.view")),
     db: Session = Depends(get_db),
 ):
     query = db.query(Promotion).filter(Promotion.tenant_id == ctx.tenant.id)
@@ -26,7 +26,7 @@ def list_promotions(
 @router.post("", response_model=PromotionResponse, status_code=201)
 def create_promotion(
     body: PromotionCreate,
-    ctx: TenantContext = Depends(require_permission("product:write")),
+    ctx: TenantContext = Depends(require_permission("promotions.create")),
     db: Session = Depends(get_db),
 ):
     promo = Promotion(**body.model_dump(), status="scheduled", tenant_id=ctx.tenant.id)
@@ -40,7 +40,7 @@ def create_promotion(
 def update_promotion(
     promotion_id: int,
     body: PromotionUpdate,
-    ctx: TenantContext = Depends(require_permission("product:write")),
+    ctx: TenantContext = Depends(require_permission("promotions.create")),
     db: Session = Depends(get_db),
 ):
     promo = db.query(Promotion).filter(
@@ -59,7 +59,7 @@ def update_promotion(
 @router.delete("/{promotion_id}", status_code=204)
 def delete_promotion(
     promotion_id: int,
-    ctx: TenantContext = Depends(require_permission("product:delete")),
+    ctx: TenantContext = Depends(require_permission("promotions.delete")),
     db: Session = Depends(get_db),
 ):
     promo = db.query(Promotion).filter(

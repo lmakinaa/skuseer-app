@@ -24,7 +24,7 @@ router = APIRouter()
 
 @router.get("/", response_model=list[RoleResponse])
 async def list_roles(
-    ctx: TenantContext = Depends(require_permission("tenant:read")),
+    ctx: TenantContext = Depends(require_permission("settings.roles")),
     db: Session = Depends(get_db),
 ):
     roles = db.query(Role).filter(Role.tenant_id == ctx.tenant.id).all()
@@ -40,7 +40,7 @@ async def list_roles(
 @router.post("/", response_model=RoleResponse, status_code=201)
 async def create_role(
     body: RoleCreate,
-    ctx: TenantContext = Depends(require_permission("tenant:write")),
+    ctx: TenantContext = Depends(require_permission("settings.roles")),
     db: Session = Depends(get_db),
 ):
     existing = db.query(Role).filter(
@@ -74,7 +74,7 @@ async def create_role(
 
 @router.get("/permissions", response_model=list[PermissionResponse])
 async def list_all_permissions(
-    ctx: TenantContext = Depends(require_permission("tenant:read")),
+    ctx: TenantContext = Depends(require_permission("settings.roles")),
     db: Session = Depends(get_db),
 ):
     perms = db.query(Permission).order_by(Permission.codename).all()
@@ -87,7 +87,7 @@ async def list_all_permissions(
 @router.get("/{role_id}", response_model=RoleWithPermissionsResponse)
 async def get_role(
     role_id: str,
-    ctx: TenantContext = Depends(require_permission("tenant:read")),
+    ctx: TenantContext = Depends(require_permission("settings.roles")),
     db: Session = Depends(get_db),
 ):
     role = db.query(Role).filter(Role.id == role_id, Role.tenant_id == ctx.tenant.id).first()
@@ -114,7 +114,7 @@ async def get_role(
 async def update_role(
     role_id: str,
     body: RoleUpdate,
-    ctx: TenantContext = Depends(require_permission("tenant:write")),
+    ctx: TenantContext = Depends(require_permission("settings.roles")),
     db: Session = Depends(get_db),
 ):
     role = db.query(Role).filter(Role.id == role_id, Role.tenant_id == ctx.tenant.id).first()
@@ -143,7 +143,7 @@ async def update_role(
 @router.delete("/{role_id}", status_code=204)
 async def delete_role(
     role_id: str,
-    ctx: TenantContext = Depends(require_permission("tenant:delete")),
+    ctx: TenantContext = Depends(require_permission("settings.roles")),
     db: Session = Depends(get_db),
 ):
     role = db.query(Role).filter(Role.id == role_id, Role.tenant_id == ctx.tenant.id).first()
@@ -170,7 +170,7 @@ async def delete_role(
 async def set_role_permissions(
     role_id: str,
     body: SetPermissionsRequest,
-    ctx: TenantContext = Depends(require_permission("tenant:write")),
+    ctx: TenantContext = Depends(require_permission("settings.roles")),
     db: Session = Depends(get_db),
 ):
     role = db.query(Role).filter(Role.id == role_id, Role.tenant_id == ctx.tenant.id).first()

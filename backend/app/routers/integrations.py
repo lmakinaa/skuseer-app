@@ -33,6 +33,7 @@ def _to_response(integration: Integration) -> IntegrationResponse:
         provider=integration.provider,
         status=integration.status,
         last_sync=_human_sync(integration.last_synced_at),
+        icon=integration.icon,
         data_points=integration.data_points,
         impact=integration.impact,
     )
@@ -40,7 +41,7 @@ def _to_response(integration: Integration) -> IntegrationResponse:
 
 @router.get("", response_model=list[IntegrationResponse])
 def list_integrations(
-    ctx: TenantContext = Depends(require_permission("integration:read")),
+    ctx: TenantContext = Depends(require_permission("settings.integrations")),
     db: Session = Depends(get_db),
 ):
     rows = db.query(Integration).filter(Integration.tenant_id == ctx.tenant.id).all()
@@ -50,7 +51,7 @@ def list_integrations(
 @router.post("/{integration_id}/connect", response_model=IntegrationResponse)
 def connect_integration(
     integration_id: str,
-    ctx: TenantContext = Depends(require_permission("integration:write")),
+    ctx: TenantContext = Depends(require_permission("settings.integrations")),
     db: Session = Depends(get_db),
 ):
     integration = db.query(Integration).filter(
@@ -69,7 +70,7 @@ def connect_integration(
 @router.post("/{integration_id}/disconnect", response_model=IntegrationResponse)
 def disconnect_integration(
     integration_id: str,
-    ctx: TenantContext = Depends(require_permission("integration:write")),
+    ctx: TenantContext = Depends(require_permission("settings.integrations")),
     db: Session = Depends(get_db),
 ):
     integration = db.query(Integration).filter(
@@ -87,7 +88,7 @@ def disconnect_integration(
 @router.post("/{integration_id}/refresh", response_model=IntegrationResponse)
 def refresh_integration(
     integration_id: str,
-    ctx: TenantContext = Depends(require_permission("integration:write")),
+    ctx: TenantContext = Depends(require_permission("settings.integrations")),
     db: Session = Depends(get_db),
 ):
     integration = db.query(Integration).filter(

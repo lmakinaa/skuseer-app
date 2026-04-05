@@ -12,21 +12,26 @@ class Permission(Base):
     description = Column(String, nullable=True)
 
 
-# All permission codenames in the system
+# All permission codenames in the system — dot notation aligned with frontend
 ALL_PERMISSIONS = [
-    ("product:read", "View products"),
-    ("product:write", "Create and update products"),
-    ("product:delete", "Delete products"),
-    ("forecast:read", "View forecasts"),
-    ("forecast:write", "Create and update forecasts"),
-    ("forecast:delete", "Delete forecasts"),
-    ("integration:read", "View integrations"),
-    ("integration:write", "Manage integrations"),
-    ("integration:delete", "Delete integrations"),
-    ("tenant:read", "View tenant settings and members"),
-    ("tenant:write", "Update tenant settings and invite members"),
-    ("tenant:delete", "Remove members and delete tenant resources"),
-    ("report:read", "View reports"),
-    ("report:write", "Generate and schedule reports"),
-    ("report:delete", "Delete reports"),
+    ("dashboard.view", "View dashboard & KPIs"),
+    ("dashboard.export", "Export dashboard data"),
+    ("products.view", "View products & forecasts"),
+    ("products.edit", "Edit product details"),
+    ("products.import", "Import / export products"),
+    ("products.delete", "Delete products"),
+    ("forecasts.view", "View forecast reports"),
+    ("forecasts.configure", "Configure forecast models"),
+    ("forecasts.retrain", "Trigger model retraining"),
+    ("promotions.view", "View promotions"),
+    ("promotions.create", "Create & edit promotions"),
+    ("promotions.delete", "Delete promotions"),
+    ("reports.view", "View reports"),
+    ("reports.generate", "Generate new reports"),
+    ("reports.schedule", "Schedule automated reports"),
+    ("settings.store", "Edit store information"),
+    ("settings.members", "Manage team members"),
+    ("settings.roles", "Manage roles & permissions"),
+    ("settings.integrations", "Manage data sources"),
+    ("settings.products", "Manage categories & import"),
 ]

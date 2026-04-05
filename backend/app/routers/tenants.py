@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from datetime import datetime, timezone
@@ -23,51 +24,70 @@ from app.services.email_service import send_invite_email
 router = APIRouter()
 
 
+def _parse_operating_hours(raw: str | None) -> dict[str, str] | None:
+    if not raw:
+        return None
+    return json.loads(raw)
+
+
+def _tenant_response(tenant, member_count: int | None = None) -> TenantResponse:
+    return TenantResponse(
+        id=tenant.id,
+        name=tenant.name,
+        slug=tenant.slug,
+        store_id=tenant.store_id,
+        location=tenant.location,
+        address=tenant.address,
+        phone=tenant.phone,
+        website=tenant.website,
+        timezone=tenant.timezone,
+        operating_hours=_parse_operating_hours(tenant.operating_hours),
+        is_active=tenant.is_active,
+        created_at=tenant.created_at,
+        member_count=member_count,
+    )
+
+
 @router.get("/current", response_model=TenantResponse)
 async def get_current_tenant(
-    ctx: TenantContext = Depends(require_permission("tenant:read")),
+    ctx: TenantContext = Depends(require_permission("settings.store")),
     db: Session = Depends(get_db),
 ):
     count = db.query(TenantMembership).filter(
         TenantMembership.tenant_id == ctx.tenant.id,
         TenantMembership.is_active == True,
     ).count()
-    return TenantResponse(
-        id=ctx.tenant.id,
-        name=ctx.tenant.name,
-        slug=ctx.tenant.slug,
-        location=ctx.tenant.location,
-        is_active=ctx.tenant.is_active,
-        created_at=ctx.tenant.created_at,
-        member_count=count,
-    )
+    return _tenant_response(ctx.tenant, member_count=count)
 
 
 @router.patch("/current", response_model=TenantResponse)
 async def update_current_tenant(
     body: TenantUpdate,
-    ctx: TenantContext = Depends(require_permission("tenant:write")),
+    ctx: TenantContext = Depends(require_permission("settings.members")),
     db: Session = Depends(get_db),
 ):
     if body.name is not None:
         ctx.tenant.name = body.name
     if body.location is not None:
         ctx.tenant.location = body.location
+    if body.address is not None:
+        ctx.tenant.address = body.address
+    if body.phone is not None:
+        ctx.tenant.phone = body.phone
+    if body.website is not None:
+        ctx.tenant.website = body.website
+    if body.timezone is not None:
+        ctx.tenant.timezone = body.timezone
+    if body.operating_hours is not None:
+        ctx.tenant.operating_hours = json.dumps(body.operating_hours)
     db.commit()
     db.refresh(ctx.tenant)
-    return TenantResponse(
-        id=ctx.tenant.id,
-        name=ctx.tenant.name,
-        slug=ctx.tenant.slug,
-        location=ctx.tenant.location,
-        is_active=ctx.tenant.is_active,
-        created_at=ctx.tenant.created_at,
-    )
+    return _tenant_response(ctx.tenant)
 
 
 @router.get("/current/members", response_model=list[MemberResponse])
 async def list_members(
-    ctx: TenantContext = Depends(require_permission("tenant:read")),
+    ctx: TenantContext = Depends(require_permission("settings.store")),
     db: Session = Depends(get_db),
 ):
     rows = (
@@ -94,7 +114,7 @@ async def list_members(
 @router.post("/current/members/invite", response_model=MemberResponse, status_code=201)
 async def invite_member(
     body: MemberInviteRequest,
-    ctx: TenantContext = Depends(require_permission("tenant:write")),
+    ctx: TenantContext = Depends(require_permission("settings.members")),
     db: Session = Depends(get_db),
 ):
     # Validate role belongs to this tenant
@@ -159,7 +179,7 @@ async def invite_member(
 @router.delete("/current/members/{user_id}", status_code=204)
 async def remove_member(
     user_id: str,
-    ctx: TenantContext = Depends(require_permission("tenant:delete")),
+    ctx: TenantContext = Depends(require_permission("settings.members")),
     db: Session = Depends(get_db),
 ):
     if user_id == ctx.user.id:
@@ -180,7 +200,7 @@ async def remove_member(
 async def change_member_role(
     user_id: str,
     body: MemberRoleUpdate,
-    ctx: TenantContext = Depends(require_permission("tenant:write")),
+    ctx: TenantContext = Depends(require_permission("settings.members")),
     db: Session = Depends(get_db),
 ):
     role = db.query(Role).filter(Role.id == body.role_id, Role.tenant_id == ctx.tenant.id).first()

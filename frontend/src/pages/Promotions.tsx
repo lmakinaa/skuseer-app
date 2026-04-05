@@ -3,7 +3,7 @@ import { Megaphone, CheckCircle, Clock, CalendarCheck } from "lucide-react";
 import PageLayout from "@/components/PageLayout";
 import { usePromotions } from "@/hooks/useApi";
 
-const statusConfig = {
+const statusConfig: Record<string, { icon: any; color: string; label: string }> = {
   active: { icon: CheckCircle, color: "bg-success/10 text-success", label: "Active" },
   completed: { icon: Clock, color: "bg-muted text-muted-foreground", label: "Completed" },
   scheduled: { icon: CalendarCheck, color: "bg-primary/10 text-primary", label: "Scheduled" },
@@ -11,12 +11,11 @@ const statusConfig = {
 
 const Promotions = () => {
   const { data: promotions = [] } = usePromotions();
-
   return (
   <PageLayout title="Promotions" subtitle={`${promotions.length} total promotions`}>
     <div className="grid grid-cols-3 gap-3">
       {[
-        { label: "Active",    count: promotions.filter(p => p.status === "active").length,    color: "text-success" },
+        { label: "Active", count: promotions.filter(p => p.status === "active").length, color: "text-success" },
         { label: "Scheduled", count: promotions.filter(p => p.status === "scheduled").length, color: "text-primary" },
         { label: "Completed", count: promotions.filter(p => p.status === "completed").length, color: "text-muted-foreground" },
       ].map(stat => (

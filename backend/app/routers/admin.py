@@ -89,8 +89,16 @@ async def create_tenant(
     )
     db.add(viewer_role)
     db.flush()
+    viewer_perms = {
+        "dashboard.view",
+        "products.view",
+        "forecasts.view",
+        "promotions.view",
+        "reports.view",
+        "settings.store",
+    }
     for p in all_perms:
-        if p.codename.endswith(":read"):
+        if p.codename in viewer_perms:
             db.add(RolePermission(id=str(uuid.uuid4()), role_id=viewer_role.id, permission_id=p.id))
 
     db.commit()

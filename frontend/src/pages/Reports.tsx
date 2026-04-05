@@ -3,7 +3,7 @@ import { FileText, Download, CheckCircle, Clock, Loader2 } from "lucide-react";
 import PageLayout from "@/components/PageLayout";
 import { useReports, useGenerateReport } from "@/hooks/useApi";
 
-const statusConfig = {
+const statusConfig: Record<string, { icon: any; color: string; label: string }> = {
   delivered: { icon: CheckCircle, color: "text-success", label: "Delivered" },
   scheduled: { icon: Clock, color: "text-primary", label: "Scheduled" },
   generating: { icon: Loader2, color: "text-warning", label: "Generating" },
@@ -20,7 +20,6 @@ const Reports = () => {
       recipients: "team@freshmart.com",
     });
   };
-
   return (
   <PageLayout title="Reports" subtitle="Automated insights & analytics">
     <div className="flex items-center gap-3">

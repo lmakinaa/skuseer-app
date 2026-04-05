@@ -2,28 +2,34 @@
 Seed the SQLite database with mock data.
 Run from the backend/ directory:  python seed.py
 """
-import sys, os, math, datetime, uuid
+import json, sys, os, math, datetime, uuid
 
 sys.path.insert(0, os.path.dirname(__file__))
 
 from app.database import SessionLocal
 from app.models import (
     Tenant, Permission, Role, RolePermission,
-    Product, Category, ForecastModel, ChartDataPoint,
+    Product, Category, Subcategory, ForecastModel, ChartDataPoint,
     Promotion, Report, Integration, ActivityLog,
+    ForecastRun, ForecastRunResult,
 )
+from app.models.user import User
+from app.models.tenant_membership import TenantMembership
 from app.models.permission import ALL_PERMISSIONS
 
 
 DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+DEFAULT_USER_ID = "00000000-0000-0000-0000-000000000002"
 
 
 def clear_tables(db):
     for model in [
+        ForecastRunResult, ForecastRun,
+        TenantMembership,
         RolePermission, Role,
         ActivityLog, ChartDataPoint, ForecastModel,
-        Promotion, Report, Integration, Category, Product,
-        Permission, Tenant,
+        Promotion, Report, Integration, Subcategory, Category, Product,
+        Permission, User, Tenant,
     ]:
         db.query(model).delete()
     db.commit()
@@ -32,9 +38,20 @@ def clear_tables(db):
 def seed_tenant(db):
     tenant = Tenant(
         id=DEFAULT_TENANT_ID,
-        name="FreshMart #247",
+        name="FreshMart Supermarket",
         slug="freshmart-247",
-        location="Brooklyn, NY",
+        store_id="FM-247",
+        location="Austin, TX",
+        address="1847 Oak Valley Drive, Austin, TX 78704",
+        phone="+1 (512) 555-0198",
+        website="freshmart247.com",
+        timezone="America/Chicago (CST)",
+        operating_hours=json.dumps({
+            "Mon – Fri": "6:00 AM – 10:00 PM",
+            "Saturday": "7:00 AM – 11:00 PM",
+            "Sunday": "8:00 AM – 9:00 PM",
+            "Holidays": "9:00 AM – 6:00 PM",
+        }),
         is_active=True,
     )
     db.add(tenant)
@@ -60,23 +77,50 @@ def seed_roles(db, tenant_id, perms):
     for p in perms.values():
         db.add(RolePermission(id=str(uuid.uuid4()), role_id=admin_role.id, permission_id=p.id))
 
-    # Store Manager — read + write (no delete)
+    # Store Manager — all except delete and dangerous settings
     manager_role = Role(id=str(uuid.uuid4()), tenant_id=tenant_id, name="Store Manager", description="Can view and edit, but not delete", is_default=True)
     db.add(manager_role)
     db.flush()
+    manager_exclude = {"products.delete", "promotions.delete", "settings.roles", "settings.members"}
     for codename, p in perms.items():
-        if "delete" not in codename:
+        if codename not in manager_exclude:
             db.add(RolePermission(id=str(uuid.uuid4()), role_id=manager_role.id, permission_id=p.id))
 
-    # Viewer — read only
+    # Viewer — view-only permissions
     viewer_role = Role(id=str(uuid.uuid4()), tenant_id=tenant_id, name="Viewer", description="Read-only access", is_default=False)
     db.add(viewer_role)
     db.flush()
+    viewer_perms = {"dashboard.view", "products.view", "forecasts.view", "promotions.view", "reports.view", "settings.store"}
     for codename, p in perms.items():
-        if codename.endswith(":read"):
+        if codename in viewer_perms:
             db.add(RolePermission(id=str(uuid.uuid4()), role_id=viewer_role.id, permission_id=p.id))
 
     return admin_role, manager_role, viewer_role
+
+
+def seed_default_user(db):
+    user = User(
+        id=DEFAULT_USER_ID,
+        keycloak_sub="seed-placeholder",
+        email="demo@stockseer.local",
+        full_name="Demo User",
+        is_platform_admin=True,
+    )
+    db.add(user)
+    db.flush()
+    return user
+
+
+def seed_membership(db, user_id, tenant_id, admin_role_id):
+    membership = TenantMembership(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        tenant_id=tenant_id,
+        role_id=admin_role_id,
+        is_active=True,
+    )
+    db.add(membership)
+    db.flush()
 
 
 def seed_products(db, tenant_id):
@@ -110,17 +154,21 @@ def seed_products(db, tenant_id):
 
 
 def seed_categories(db, tenant_id):
-    rows = [
-        dict(name="Dairy",         products=342, accuracy=97.1, trend="up"),
-        dict(name="Produce",       products=287, accuracy=95.8, trend="up"),
-        dict(name="Bakery",        products=156, accuracy=96.2, trend="stable"),
-        dict(name="Meat & Seafood",products=198, accuracy=94.5, trend="up"),
-        dict(name="Beverages",     products=412, accuracy=97.4, trend="up"),
-        dict(name="Frozen",        products=231, accuracy=96.0, trend="stable"),
-        dict(name="Snacks",        products=189, accuracy=95.3, trend="down"),
-        dict(name="Household",     products=132, accuracy=98.1, trend="stable"),
+    categories_data = [
+        ("Dairy",          342, 97.1, "up",      ["Milk", "Cheese", "Yogurt", "Butter", "Cream"]),
+        ("Produce",        287, 95.8, "up",      ["Fruits", "Vegetables", "Herbs", "Organic"]),
+        ("Bakery",         156, 96.2, "stable",  ["Bread", "Pastries", "Cakes", "Tortillas"]),
+        ("Meat & Seafood", 198, 94.5, "up",      ["Beef", "Poultry", "Pork", "Seafood", "Deli"]),
+        ("Beverages",      412, 97.4, "up",      ["Soft Drinks", "Water", "Juice", "Coffee & Tea", "Energy Drinks"]),
+        ("Frozen",         231, 96.0, "stable",  ["Pizza", "Ice Cream", "Vegetables", "Meals", "Desserts"]),
+        ("Snacks",         189, 95.3, "down",    ["Chips", "Cookies", "Crackers", "Nuts", "Candy"]),
+        ("Household",      132, 98.1, "stable",  ["Cleaning", "Paper Products", "Laundry", "Kitchen"]),
     ]
-    db.add_all([Category(tenant_id=tenant_id, **r) for r in rows])
+    for name, products, accuracy, trend, subcats in categories_data:
+        cat_id = str(uuid.uuid4())
+        db.add(Category(id=cat_id, tenant_id=tenant_id, name=name, products=products, accuracy=accuracy, trend=trend))
+        for sub_name in subcats:
+            db.add(Subcategory(id=str(uuid.uuid4()), category_id=cat_id, name=sub_name))
 
 
 def seed_forecast_models(db, tenant_id):
@@ -183,12 +231,12 @@ def seed_reports(db, tenant_id):
 
 def seed_integrations(db, tenant_id):
     rows = [
-        dict(id="weather",    name="Weather & Climate",      description="Real-time weather data for your store locations.", provider="Visual Crossing",   status="connected",    last_synced_at=datetime.datetime.utcnow() - datetime.timedelta(minutes=2),  data_points="Temperature, precipitation, cloud cover, wind speed",  impact="Improved forecast accuracy by 4.2%"),
-        dict(id="holidays",   name="Local Holidays & Events",description="Public holidays, local festivals, sports events.", provider="PredictHQ",         status="connected",    last_synced_at=datetime.datetime.utcnow() - datetime.timedelta(hours=1),    data_points="Holidays, concerts, sports, festivals",                impact="Prevented 23 overstock incidents this quarter"),
-        dict(id="pos",        name="Point of Sale",           description="Direct connection to your POS system.",            provider="Square POS",        status="connected",    last_synced_at=datetime.datetime.utcnow(),                                   data_points="Transactions, discounts, returns, basket size",        impact="Core data source — 1.2M transactions analyzed"),
-        dict(id="promotions", name="Promotions & Discounts",  description="Tracks all active and past promotions.",           provider="Internal Database", status="connected",    last_synced_at=datetime.datetime.utcnow(),                                   data_points="Discount type, duration, affected SKUs, lift %",       impact="Normalized 47 promotional spikes in forecasts"),
-        dict(id="supplier",   name="Supplier Lead Times",     description="Monitors supplier delivery schedules.",            provider="TradeGecko",        status="disconnected", last_synced_at=None,                                                         data_points="Lead times, delivery reliability, order minimums",     impact="Not yet connected"),
-        dict(id="competitor", name="Competitor Pricing",      description="Tracks competitor pricing for key SKUs.",          provider="Prisync",           status="disconnected", last_synced_at=None,                                                         data_points="Competitor prices, price changes, promotions",         impact="Not yet connected"),
+        dict(id="weather",    name="Weather & Climate",      description="Real-time weather data for your store locations.", provider="Visual Crossing",   status="connected",    last_synced_at=datetime.datetime.utcnow() - datetime.timedelta(minutes=2),  data_points="Temperature, precipitation, cloud cover, wind speed",  impact="Improved forecast accuracy by 4.2%", icon="🌦️"),
+        dict(id="holidays",   name="Local Holidays & Events",description="Public holidays, local festivals, sports events.", provider="PredictHQ",         status="connected",    last_synced_at=datetime.datetime.utcnow() - datetime.timedelta(hours=1),    data_points="Holidays, concerts, sports, festivals",                impact="Prevented 23 overstock incidents this quarter", icon="📅"),
+        dict(id="pos",        name="Point of Sale",           description="Direct connection to your POS system.",            provider="Square POS",        status="connected",    last_synced_at=datetime.datetime.utcnow(),                                   data_points="Transactions, discounts, returns, basket size",        impact="Core data source — 1.2M transactions analyzed", icon="🏪"),
+        dict(id="promotions", name="Promotions & Discounts",  description="Tracks all active and past promotions.",           provider="Internal Database", status="connected",    last_synced_at=datetime.datetime.utcnow(),                                   data_points="Discount type, duration, affected SKUs, lift %",       impact="Normalized 47 promotional spikes in forecasts", icon="🏷️"),
+        dict(id="supplier",   name="Supplier Lead Times",     description="Monitors supplier delivery schedules.",            provider="TradeGecko",        status="disconnected", last_synced_at=None,                                                         data_points="Lead times, delivery reliability, order minimums",     impact="Not yet connected", icon="🚚"),
+        dict(id="competitor", name="Competitor Pricing",      description="Tracks competitor pricing for key SKUs.",          provider="Prisync",           status="disconnected", last_synced_at=None,                                                         data_points="Competitor prices, price changes, promotions",         impact="Not yet connected", icon="📊"),
     ]
     db.add_all([Integration(tenant_id=tenant_id, **r) for r in rows])
 
@@ -206,6 +254,99 @@ def seed_activity_log(db, tenant_id):
     db.add_all([ActivityLog(tenant_id=tenant_id, **r) for r in rows])
 
 
+def seed_forecast_runs(db, tenant_id):
+    runs = [
+        dict(
+            id="FC-001", name="Full Catalog Forecast", status="completed",
+            model="Smart Forecast", products_scope="All Products", products_count=24,
+            accuracy=96.8, duration="3m 25s",
+            summary="Processed 24 SKUs across 8 categories. Average accuracy 96.8%. 3 products flagged for review.",
+            launched_at=datetime.datetime(2024, 9, 10, 9, 15, 22),
+            finished_at=datetime.datetime(2024, 9, 10, 9, 18, 47),
+        ),
+        dict(
+            id="FC-002", name="Dairy Category Forecast", status="completed",
+            model="Smart Forecast", products_scope="Dairy", products_count=5,
+            accuracy=97.1, duration="52s",
+            summary="Processed 5 Dairy SKUs. High accuracy across all items. No flags.",
+            launched_at=datetime.datetime(2024, 9, 9, 14, 30, 10),
+            finished_at=datetime.datetime(2024, 9, 9, 14, 31, 2),
+        ),
+        dict(
+            id="FC-003", name="Selected Products Forecast", status="running",
+            model="Smart Forecast", products_scope="Custom Selection", products_count=3,
+            accuracy=None, duration="In progress",
+            summary="Running forecast for 3 selected products...",
+            launched_at=datetime.datetime(2024, 9, 10, 10, 5, 33),
+            finished_at=None,
+        ),
+        dict(
+            id="FC-004", name="Produce Category Forecast", status="completed",
+            model="Trend Analyzer", products_scope="Produce", products_count=4,
+            accuracy=95.2, duration="1m 12s",
+            summary="Processed 4 Produce SKUs. All within acceptable accuracy range.",
+            launched_at=datetime.datetime(2024, 9, 8, 8, 0, 0),
+            finished_at=datetime.datetime(2024, 9, 8, 8, 1, 12),
+        ),
+        dict(
+            id="FC-005", name="Full Catalog Forecast", status="completed",
+            model="Smart Forecast", products_scope="All Products", products_count=24,
+            accuracy=96.1, duration="3m 48s",
+            summary="Processed 24 SKUs across 8 categories. Average accuracy 96.1%.",
+            launched_at=datetime.datetime(2024, 9, 3, 9, 0, 0),
+            finished_at=datetime.datetime(2024, 9, 3, 9, 3, 48),
+        ),
+        dict(
+            id="FC-006", name="Beverages Only", status="completed",
+            model="Smart Forecast", products_scope="Beverages", products_count=3,
+            accuracy=97.4, duration="31s",
+            summary="Processed 3 Beverage SKUs. All high accuracy.",
+            launched_at=datetime.datetime(2024, 9, 2, 11, 20, 0),
+            finished_at=datetime.datetime(2024, 9, 2, 11, 20, 31),
+        ),
+    ]
+    db.add_all([ForecastRun(tenant_id=tenant_id, **r) for r in runs])
+    db.flush()
+
+    # Results for FC-001 (full catalog — top products + flagged ones)
+    fc001_results = [
+        dict(run_id="FC-001", product_id="DAI-001", product_name="Whole Milk 1gal",          forecast=2340, accuracy=97.2, status="good"),
+        dict(run_id="FC-001", product_id="PRO-012", product_name="Bananas (bunch)",           forecast=4120, accuracy=95.8, status="good"),
+        dict(run_id="FC-001", product_id="FRZ-031", product_name="Ice Cream Vanilla 1qt",     forecast=1120, accuracy=95.2, status="review"),
+        dict(run_id="FC-001", product_id="BAK-005", product_name="Croissants 6pk",            forecast=680,  accuracy=94.1, status="review"),
+        dict(run_id="FC-001", product_id="MEA-009", product_name="Atlantic Salmon (lb)",      forecast=620,  accuracy=93.8, status="review"),
+    ]
+
+    # Results for FC-002 (dairy only)
+    fc002_results = [
+        dict(run_id="FC-002", product_id="DAI-001", product_name="Whole Milk 1gal",          forecast=2340, accuracy=97.2, status="good"),
+        dict(run_id="FC-002", product_id="DAI-002", product_name="2% Milk 1gal",             forecast=1980, accuracy=96.8, status="good"),
+        dict(run_id="FC-002", product_id="DAI-003", product_name="Greek Yogurt 32oz",        forecast=1240, accuracy=95.4, status="good"),
+        dict(run_id="FC-002", product_id="DAI-004", product_name="Cheddar Cheese Block",     forecast=890,  accuracy=97.6, status="good"),
+        dict(run_id="FC-002", product_id="DAI-005", product_name="Butter 1lb",               forecast=1560, accuracy=96.1, status="good"),
+    ]
+
+    # FC-003 has no results (running)
+
+    # Results for FC-004 (produce)
+    fc004_results = [
+        dict(run_id="FC-004", product_id="PRO-012", product_name="Bananas (bunch)",           forecast=4120, accuracy=95.8, status="good"),
+        dict(run_id="FC-004", product_id="PRO-013", product_name="Avocados (each)",           forecast=2100, accuracy=93.2, status="review"),
+        dict(run_id="FC-004", product_id="PRO-014", product_name="Baby Spinach 5oz",          forecast=1340, accuracy=94.7, status="good"),
+        dict(run_id="FC-004", product_id="PRO-015", product_name="Roma Tomatoes (lb)",        forecast=1890, accuracy=95.1, status="good"),
+    ]
+
+    # Results for FC-006 (beverages)
+    fc006_results = [
+        dict(run_id="FC-006", product_id="BEV-019", product_name="Coca-Cola 12pk",            forecast=980,  accuracy=97.4, status="good"),
+        dict(run_id="FC-006", product_id="BEV-020", product_name="Spring Water 24pk",         forecast=1640, accuracy=98.1, status="good"),
+        dict(run_id="FC-006", product_id="BEV-021", product_name="Orange Juice 52oz",         forecast=1120, accuracy=96.5, status="good"),
+    ]
+
+    all_results = fc001_results + fc002_results + fc004_results + fc006_results
+    db.add_all([ForecastRunResult(**r) for r in all_results])
+
+
 def main():
     db = SessionLocal()
     try:
@@ -219,7 +360,13 @@ def main():
         perms = seed_permissions(db)
 
         print("Seeding default roles...")
-        seed_roles(db, tenant.id, perms)
+        admin_role, _, _ = seed_roles(db, tenant.id, perms)
+
+        print("Seeding default user...")
+        user = seed_default_user(db)
+
+        print("Seeding membership...")
+        seed_membership(db, user.id, tenant.id, admin_role.id)
 
         print("Seeding products...")
         seed_products(db, tenant.id)
@@ -237,6 +384,8 @@ def main():
         seed_integrations(db, tenant.id)
         print("Seeding activity log...")
         seed_activity_log(db, tenant.id)
+        print("Seeding forecast runs...")
+        seed_forecast_runs(db, tenant.id)
 
         db.commit()
         print("Done. Database seeded successfully.")

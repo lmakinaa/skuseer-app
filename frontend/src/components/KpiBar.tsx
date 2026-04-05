@@ -5,10 +5,10 @@ import { TrendingUp, DollarSign, Leaf, Package } from "lucide-react";
 const ICONS = [TrendingUp, DollarSign, Leaf, Package];
 
 const KpiBar = () => {
-  const { data: kpis = [] } = useKpis();
+  const { data: metrics = [] } = useKpis();
   return (
   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    {kpis.map((kpi, i) => {
+    {metrics.map((kpi, i) => {
       const Icon = ICONS[i];
       return (
         <motion.div

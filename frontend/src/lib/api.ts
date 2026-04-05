@@ -44,6 +44,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return camelizeKeys(json) as T;
 }
 
+async function requestNoContent(path: string, init?: RequestInit): Promise<void> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    headers: { ...authHeaders(), ...init?.headers },
+    ...init,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  }
+}
+
 // ── types matching API responses (post-camelization) ─────────────────────────
 export interface KPI {
   label: string;
@@ -123,10 +134,12 @@ export interface ProductDetailResponse {
 }
 
 export interface Category {
+  id: string;
   name: string;
   products: number;
   accuracy: number;
   trend: "up" | "down" | "stable";
+  subcategories?: string[];
 }
 
 export interface ForecastModel {
@@ -176,6 +189,7 @@ export interface Report {
 
 export interface Integration {
   id: string;
+  icon?: string | null;
   name: string;
   description: string;
   provider: string;
@@ -232,7 +246,13 @@ export interface TenantResponse {
   id: string;
   name: string;
   slug: string;
+  storeId?: string | null;
   location: string | null;
+  address?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  timezone?: string | null;
+  operatingHours?: Record<string, string> | null;
   isActive: boolean;
   createdAt: string | null;
   memberCount?: number;
@@ -273,7 +293,15 @@ export const getMe = () => request<MeResponse>("/api/auth/me");
 
 // Tenant
 export const getCurrentTenant = () => request<TenantResponse>("/api/tenants/current");
-export const updateCurrentTenant = (body: { name?: string; location?: string }) =>
+export const updateCurrentTenant = (body: {
+  name?: string;
+  location?: string;
+  address?: string;
+  phone?: string;
+  website?: string;
+  timezone?: string;
+  operatingHours?: Record<string, string>;
+}) =>
   request<TenantResponse>("/api/tenants/current", { method: "PATCH", body: JSON.stringify(body) });
 export const getTenantMembers = () => request<MemberResponse[]>("/api/tenants/current/members");
 export const inviteMember = (email: string, roleId: string) =>
@@ -281,7 +309,7 @@ export const inviteMember = (email: string, roleId: string) =>
     method: "POST", body: JSON.stringify({ email, role_id: roleId }),
   });
 export const removeMember = (userId: string) =>
-  fetch(`${BASE_URL}/api/tenants/current/members/${userId}`, { method: "DELETE", headers: authHeaders() });
+  requestNoContent(`/api/tenants/current/members/${userId}`, { method: "DELETE" });
 export const changeMemberRole = (userId: string, roleId: string) =>
   request<MemberResponse>(`/api/tenants/current/members/${userId}/role`, {
     method: "PATCH", body: JSON.stringify({ role_id: roleId }),
@@ -291,6 +319,15 @@ export const changeMemberRole = (userId: string, roleId: string) =>
 export const getRoles = () => request<RoleResponse[]>("/api/roles/");
 export const createRole = (body: { name: string; description?: string }) =>
   request<RoleResponse>("/api/roles/", { method: "POST", body: JSON.stringify(body) });
+export const updateRole = (roleId: string, body: { name?: string; description?: string; isDefault?: boolean }) =>
+  request<RoleResponse>(`/api/roles/${roleId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      name: body.name,
+      description: body.description,
+      is_default: body.isDefault,
+    }),
+  });
 export const getRolePermissions = (roleId: string) =>
   request<RoleWithPermissions>(`/api/roles/${roleId}`);
 export const setRolePermissions = (roleId: string, permissionIds: string[]) =>
@@ -298,7 +335,7 @@ export const setRolePermissions = (roleId: string, permissionIds: string[]) =>
     method: "PUT", body: JSON.stringify({ permission_ids: permissionIds }),
   });
 export const deleteRole = (roleId: string) =>
-  fetch(`${BASE_URL}/api/roles/${roleId}`, { method: "DELETE", headers: authHeaders() });
+  requestNoContent(`/api/roles/${roleId}`, { method: "DELETE" });
 export const getAllPermissions = () => request<PermissionItem[]>("/api/roles/permissions");
 
 // Admin
@@ -324,12 +361,145 @@ export const getProducts = (search: string, category: string, page = 1) =>
 export const getProduct = (id: string) =>
   request<ProductDetailResponse>(`/api/products/${id}`);
 
+export const createProduct = (body: {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  stock: number;
+  reorderPoint: number;
+}) =>
+  request<Product>("/api/products", {
+    method: "POST",
+    body: JSON.stringify({
+      id: body.id,
+      name: body.name,
+      category: body.category,
+      price: body.price,
+      stock: body.stock,
+      reorder_point: body.reorderPoint,
+    }),
+  });
+
+export interface ProductImportHistoryItem {
+  id: number;
+  file: string;
+  date: string;
+  items: number;
+  status: "completed" | "failed" | "processing";
+}
+
+export const getProductImportHistory = () =>
+  request<ProductImportHistoryItem[]>("/api/products/import/history");
+
+export const importProductsCsv = async (file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE_URL}/api/products/import`, {
+    method: "POST",
+    body: form,
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  }
+  return camelizeKeys(await res.json()) as ProductImportHistoryItem;
+};
+
+export const exportProductsCsv = async (): Promise<Blob> => {
+  const res = await fetch(`${BASE_URL}/api/products/export`, {
+    method: "GET",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  }
+  return await res.blob();
+};
+
 // Categories
 export const getCategories = () => request<Category[]>("/api/categories");
+
+export const createCategory = (name: string) =>
+  request<Category>("/api/categories", { method: "POST", body: JSON.stringify({ name }) });
+
+export const updateCategory = (categoryId: string, body: { name?: string }) =>
+  request<Category>(`/api/categories/${categoryId}`, { method: "PATCH", body: JSON.stringify(body) });
+
+export const deleteCategory = (categoryId: string) =>
+  requestNoContent(`/api/categories/${categoryId}`, { method: "DELETE" });
+
+export const createSubcategory = (categoryId: string, name: string) =>
+  request<Category>(`/api/categories/${categoryId}/subcategories`, {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
 
 // Forecasts
 export const getForecastModels = () => request<ForecastModel[]>("/api/forecasts/models");
 export const getAccuracyByCategory = () => request<CategoryAccuracy[]>("/api/forecasts/accuracy-by-category");
+
+// Forecast Runs
+export interface ForecastRunListItem {
+  id: string;
+  name: string;
+  date: string;
+  status: string;
+  products: number;
+  accuracy: number | null;
+  duration: string;
+  model: string;
+}
+
+export interface ForecastRunResultItem {
+  sku: string;
+  name: string;
+  forecast: number;
+  accuracy: number;
+  status: string;
+}
+
+export interface ForecastRunDetail {
+  id: string;
+  name: string;
+  status: string;
+  launchedAt: string;
+  finishedAt: string | null;
+  duration: string;
+  model: string;
+  accuracy: number | null;
+  productsCount: number;
+  products: string;
+  summary: string;
+  results: ForecastRunResultItem[];
+}
+
+export const getForecastRuns = (productId?: string) =>
+  request<ForecastRunListItem[]>(`/api/forecasts/runs${productId ? `?product_id=${productId}` : ""}`);
+
+export const getForecastRun = (runId: string) =>
+  request<ForecastRunDetail>(`/api/forecasts/runs/${runId}`);
+
+export const createForecastRun = (body: { name: string; model?: string; productIds?: string[] }) =>
+  request<ForecastRunListItem>("/api/forecasts/runs", {
+    method: "POST",
+    body: JSON.stringify({
+      name: body.name,
+      model: body.model ?? "Smart Forecast",
+      product_ids: body.productIds ?? [],
+    }),
+  });
+
+// Product Sales History
+export interface SalesHistoryPoint {
+  date: string;
+  sales: number;
+}
+
+export const getProductSalesHistory = (productId: string, days = 90) =>
+  request<SalesHistoryPoint[]>(`/api/products/${productId}/sales-history?days=${days}`);
 
 // Promotions
 export const getPromotions = (status?: string) =>

@@ -3,10 +3,10 @@ import { CloudRain, Calendar, Tag } from "lucide-react";
 import { useInsights } from "@/hooks/useApi";
 
 const InsightPanels = () => {
-  const { data: insights } = useInsights();
-  const weather = insights?.weather ?? [];
-  const events = insights?.events ?? [];
-  const promos = insights?.promos ?? [];
+  const { data } = useInsights();
+  const weather = data?.weather ?? [];
+  const events = data?.events ?? [];
+  const promos = data?.promos ?? [];
   return (
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="bg-card border border-border rounded-xl p-5">

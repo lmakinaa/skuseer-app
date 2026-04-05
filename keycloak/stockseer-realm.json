@@ -91,4 +91,26 @@
     }
   ],
 
+  "users": [
+    {
+      "username": "demo",
+      "email": "demo@stockseer.local",
+      "firstName": "Demo",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-stockseer",
+        "platform_admin"
+      ]
+    }
+  ]
+
 }

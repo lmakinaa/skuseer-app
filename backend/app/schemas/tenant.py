@@ -11,13 +11,24 @@ class TenantCreate(BaseModel):
 class TenantUpdate(BaseModel):
     name: str | None = None
     location: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    website: str | None = None
+    timezone: str | None = None
+    operating_hours: dict[str, str] | None = None
 
 
 class TenantResponse(BaseModel):
     id: str
     name: str
     slug: str
-    location: str | None
+    store_id: str | None = None
+    location: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    website: str | None = None
+    timezone: str | None = None
+    operating_hours: dict[str, str] | None = None
     is_active: bool
     created_at: datetime | None
     member_count: int | None = None

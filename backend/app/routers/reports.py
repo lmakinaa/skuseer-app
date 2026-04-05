@@ -14,7 +14,7 @@ router = APIRouter()
 
 @router.get("", response_model=list[ReportResponse])
 def list_reports(
-    ctx: TenantContext = Depends(require_permission("report:read")),
+    ctx: TenantContext = Depends(require_permission("reports.view")),
     db: Session = Depends(get_db),
 ):
     rows = db.query(Report).filter(Report.tenant_id == ctx.tenant.id).all()
@@ -24,7 +24,7 @@ def list_reports(
 @router.post("/generate", response_model=ReportResponse, status_code=202)
 def generate_report(
     body: ReportGenerateRequest,
-    ctx: TenantContext = Depends(require_permission("report:write")),
+    ctx: TenantContext = Depends(require_permission("reports.generate")),
     db: Session = Depends(get_db),
 ):
     report = Report(
@@ -44,7 +44,7 @@ def generate_report(
 @router.post("/schedule", response_model=ReportResponse, status_code=202)
 def schedule_report(
     body: ReportScheduleRequest,
-    ctx: TenantContext = Depends(require_permission("report:write")),
+    ctx: TenantContext = Depends(require_permission("reports.generate")),
     db: Session = Depends(get_db),
 ):
     report = Report(
@@ -64,7 +64,7 @@ def schedule_report(
 @router.get("/{report_id}/download")
 def download_report(
     report_id: int,
-    ctx: TenantContext = Depends(require_permission("report:read")),
+    ctx: TenantContext = Depends(require_permission("reports.view")),
     db: Session = Depends(get_db),
 ):
     report = db.query(Report).filter(

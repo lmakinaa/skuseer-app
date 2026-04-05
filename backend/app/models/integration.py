@@ -14,3 +14,4 @@ class Integration(Base):
     last_synced_at = Column(DateTime, nullable=True)
     data_points = Column(String, nullable=False)
     impact = Column(String, nullable=False)
+    icon = Column(String, nullable=True)

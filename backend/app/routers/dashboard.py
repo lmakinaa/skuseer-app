@@ -17,7 +17,7 @@ router = APIRouter()
 
 @router.get("/kpis", response_model=list[KPI])
 def get_kpis(
-    ctx: TenantContext = Depends(require_permission("product:read")),
+    ctx: TenantContext = Depends(require_permission("dashboard.view")),
     db: Session = Depends(get_db),
 ):
     product_count = db.query(Product).filter(Product.tenant_id == ctx.tenant.id).count()
@@ -31,7 +31,7 @@ def get_kpis(
 
 @router.get("/forecast-chart", response_model=ForecastChartResponse)
 def get_forecast_chart(
-    ctx: TenantContext = Depends(require_permission("product:read")),
+    ctx: TenantContext = Depends(require_permission("dashboard.view")),
     db: Session = Depends(get_db),
 ):
     points = (
@@ -55,7 +55,7 @@ def get_forecast_chart(
 
 @router.get("/activity", response_model=list[ActivityLogItem])
 def get_activity(
-    ctx: TenantContext = Depends(require_permission("product:read")),
+    ctx: TenantContext = Depends(require_permission("dashboard.view")),
     db: Session = Depends(get_db),
 ):
     logs = (
@@ -85,7 +85,7 @@ def get_activity(
 
 @router.get("/top-products", response_model=list[TopProduct])
 def get_top_products(
-    ctx: TenantContext = Depends(require_permission("product:read")),
+    ctx: TenantContext = Depends(require_permission("dashboard.view")),
     db: Session = Depends(get_db),
 ):
     products = (
@@ -110,7 +110,7 @@ def get_top_products(
 
 @router.get("/insights", response_model=InsightsResponse)
 def get_insights(
-    ctx: TenantContext = Depends(require_permission("product:read")),
+    ctx: TenantContext = Depends(require_permission("dashboard.view")),
 ):
     return InsightsResponse(
         weather=WEATHER_INSIGHTS,

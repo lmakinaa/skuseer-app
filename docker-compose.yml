@@ -9,3 +9,7 @@ services:
       - "8180:8080"
     volumes:
       - ./keycloak/stockseer-realm.json:/opt/keycloak/data/import/stockseer-realm.json:ro
+      - keycloak_data:/opt/keycloak/data
+
+volumes:
+  keycloak_data:

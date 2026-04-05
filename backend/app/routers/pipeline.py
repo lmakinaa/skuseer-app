@@ -52,7 +52,7 @@ def _job_to_result(job: PipelineJob) -> PipelineJobResult:
 async def upload_csv(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    ctx: TenantContext = Depends(require_permission("forecast:write")),
+    ctx: TenantContext = Depends(require_permission("forecasts.configure")),
     db: Session = Depends(get_db),
 ):
     if not file.filename.endswith(".csv"):
@@ -90,7 +90,7 @@ async def upload_csv(
 
 @router.get("/jobs", response_model=list[PipelineJobListItem])
 def list_jobs(
-    ctx: TenantContext = Depends(require_permission("forecast:read")),
+    ctx: TenantContext = Depends(require_permission("forecasts.view")),
     db: Session = Depends(get_db),
 ):
     jobs = (
@@ -115,7 +115,7 @@ def list_jobs(
 @router.get("/jobs/{job_id}", response_model=PipelineJobResult)
 def get_job(
     job_id: str,
-    ctx: TenantContext = Depends(require_permission("forecast:read")),
+    ctx: TenantContext = Depends(require_permission("forecasts.view")),
     db: Session = Depends(get_db),
 ):
     job = db.query(PipelineJob).filter(
@@ -130,7 +130,7 @@ def get_job(
 @router.get("/jobs/{job_id}/stream")
 async def stream_job_logs(
     job_id: str,
-    ctx: TenantContext = Depends(require_permission("forecast:read")),
+    ctx: TenantContext = Depends(require_permission("forecasts.view")),
     db: Session = Depends(get_db),
 ):
     job = db.query(PipelineJob).filter(

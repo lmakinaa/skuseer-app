@@ -66,6 +66,31 @@ async def get_current_user(
         realm_roles = claims.get("realm_access", {}).get("roles", [])
         user.is_platform_admin = "platform_admin" in realm_roles
 
+    # Auto-provision: if user has no tenant memberships, assign to the first
+    # active tenant with the default role. This handles JIT-created users and
+    # existing users who lost their memberships.
+    has_membership = (
+        db.query(TenantMembership)
+        .filter(TenantMembership.user_id == user.id, TenantMembership.is_active == True)
+        .first()
+    )
+    if not has_membership:
+        first_tenant = db.query(Tenant).filter(Tenant.is_active == True).first()
+        if first_tenant:
+            default_role = (
+                db.query(Role)
+                .filter(Role.tenant_id == first_tenant.id, Role.is_default == True)
+                .first()
+            )
+            if default_role:
+                db.add(TenantMembership(
+                    id=str(uuid.uuid4()),
+                    user_id=user.id,
+                    tenant_id=first_tenant.id,
+                    role_id=default_role.id,
+                    is_active=True,
+                ))
+
     user.last_login_at = datetime.now(timezone.utc)
     db.commit()
     return user

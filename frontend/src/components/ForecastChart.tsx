@@ -20,9 +20,9 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 const ForecastChart = () => {
-  const { data } = useForecastChart();
-  const chartData = data?.data ?? [];
-  const todayMarker = data?.todayMarker ?? "Aug 25";
+  const { data: chartResponse } = useForecastChart();
+  const chartData = chartResponse?.data ?? [];
+  const todayMarker = chartResponse?.todayMarker ?? "Today";
   return (
   <motion.div
     initial={{ opacity: 0, y: 12 }}

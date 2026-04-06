@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, ArrowUp, ArrowDown, Filter, Plus, Play, CheckSquare } from "lucide-react";
+import { Search, ArrowUp, ArrowDown, Filter, Plus, Play, CheckSquare, Trash2 } from "lucide-react";
 import PageLayout from "@/components/PageLayout";
 import AddProductDialog from "@/components/AddProductDialog";
-import { useProducts, useCategories, useCreateProduct, useCreateForecastRun } from "@/hooks/useApi";
+import { useProducts, useCategories, useCreateProduct, useCreateForecastRun, useDeleteProduct } from "@/hooks/useApi";
 
 const Products = () => {
   const navigate = useNavigate();
@@ -18,6 +18,7 @@ const Products = () => {
   const { data: apiCategories = [] } = useCategories();
   const createProduct = useCreateProduct();
   const createRun = useCreateForecastRun();
+  const deleteProduct = useDeleteProduct();
 
   const products = apiProductsData?.items ?? [];
 
@@ -52,6 +53,16 @@ const Products = () => {
     setSelectionMode(false);
   };
 
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    if (!window.confirm(`Delete ${ids.length} selected product${ids.length === 1 ? "" : "s"}? This cannot be undone.`)) return;
+
+    await Promise.all(ids.map((productId) => deleteProduct.mutateAsync(productId)));
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  };
+
   const handleAddProduct = (product: any) => {
     createProduct.mutate({
       id: product.id,
@@ -77,6 +88,12 @@ const Products = () => {
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border transition-colors ${selectionMode ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}>
             <CheckSquare className="w-3.5 h-3.5" /> Select
           </button>
+          {selectionMode && selectedIds.size > 0 && (
+            <button onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors">
+              <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedIds.size})
+            </button>
+          )}
           {selectionMode && selectedIds.size > 0 && (
             <button onClick={() => handleRunForecast("selected")}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] bg-primary text-primary-foreground font-medium hover:bg-primary/90">

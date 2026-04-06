@@ -60,3 +60,17 @@ class ActivityLogItem(BaseModel):
     time: str
     text: str
     type: str  # "success" | "warning" | "info"
+
+
+class TopBarSearchResult(BaseModel):
+    id: str
+    type: str
+    title: str
+    subtitle: str
+    path: str
+
+
+class TopBarContextResponse(BaseModel):
+    date_label: str
+    range_label: str
+    timezone: str

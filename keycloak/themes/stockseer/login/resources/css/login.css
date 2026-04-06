@@ -1,0 +1,50 @@
+/* StockSeer login theme overrides */
+
+body {
+  background:
+    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.16), transparent 28%),
+    linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+}
+
+#kc-header,
+#kc-header-wrapper {
+  display: none;
+}
+
+.login-pf body {
+  background-color: #0f172a;
+}
+
+#kc-login,
+#kc-form-login button[type="submit"],
+#kc-form-login input[type="submit"] {
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+  border: 0;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.28);
+}
+
+#kc-page-title {
+  color: #e2e8f0;
+}
+
+#kc-content {
+  backdrop-filter: blur(18px);
+}
+
+#kc-form,
+.card-pf {
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.45);
+}
+
+.kc-social-links {
+  margin-top: 1rem;
+}
+
+.kc-social-item {
+  border-radius: 12px;
+}

@@ -2,19 +2,25 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Play, Clock, CheckCircle, AlertCircle, Cpu } from "lucide-react";
+import { Play, Clock, CheckCircle, AlertCircle, Cpu, CheckSquare, Archive } from "lucide-react";
 import PageLayout from "@/components/PageLayout";
-import { useForecastRuns, useForecastModels, useAccuracyByCategory, useCreateForecastRun, useCategories } from "@/hooks/useApi";
+import { useForecastRuns, useForecastModels, useAccuracyByCategory, useCreateForecastRun, useCategories, useArchiveForecastRuns, useUnarchiveForecastRuns } from "@/hooks/useApi";
 
 const Forecasts = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"runs" | "models" | "accuracy">("runs");
+  const [activeTab, setActiveTab] = useState<"runs" | "archived" | "models" | "accuracy">("runs");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedRunIds, setSelectedRunIds] = useState<Set<string>>(new Set());
 
   const { data: apiForecastRuns = [] } = useForecastRuns();
+  const { data: archivedForecastRunsRaw = [] } = useForecastRuns(undefined, true);
   const { data: models = [] } = useForecastModels();
   const { data: apiAccuracy = [] } = useAccuracyByCategory();
   const { data: categories = [] } = useCategories();
   const createRun = useCreateForecastRun();
+  const archiveRuns = useArchiveForecastRuns();
+  const unarchiveRuns = useUnarchiveForecastRuns();
+  const archivedForecastRuns = archivedForecastRunsRaw.filter((run) => run.status === "archived");
 
   const categoryChartData = (apiAccuracy.length ? apiAccuracy : categories).map(c => ({
     name: c.name,
@@ -26,10 +32,89 @@ const Forecasts = () => {
     createRun.mutate({ name: "Full Catalog Forecast", model: "Smart Forecast" });
   };
 
+  const handleTabChange = (tab: "runs" | "archived" | "models" | "accuracy") => {
+    setActiveTab(tab);
+    if (tab !== "runs") {
+      setSelectionMode(false);
+      setSelectedRunIds(new Set());
+    }
+  };
+
+  const renderRunRow = (run: typeof apiForecastRuns[number], selectionEnabled: boolean) => {
+    const st = statusConfig[run.status] ?? statusConfig.completed;
+    return (
+      <tr key={run.id} onClick={() => !selectionEnabled && navigate(`/forecasts/${run.id}`)}
+        className="border-b border-border/50 hover:bg-accent/50 cursor-pointer transition-colors">
+        {selectionEnabled && (
+          <td className="px-4 py-3" onClick={(e) => { e.stopPropagation(); toggleRunSelection(run.id); }}>
+            <input type="checkbox" checked={selectedRunIds.has(run.id)} onChange={() => toggleRunSelection(run.id)} className="rounded border-border" />
+          </td>
+        )}
+        <td className="px-4 py-3 font-mono text-muted-foreground text-[11px]">{run.id}</td>
+        <td className="px-4 py-3 font-medium text-foreground">{run.name}</td>
+        <td className="px-4 py-3 text-muted-foreground">{run.date}</td>
+        <td className="px-4 py-3 text-muted-foreground flex items-center gap-1.5">
+          <Cpu className="w-3 h-3" /> {run.model}
+        </td>
+        <td className="px-4 py-3 text-right font-mono">{run.products}</td>
+        <td className="px-4 py-3 text-right font-mono">{run.accuracy ? `${run.accuracy}%` : "—"}</td>
+        <td className="px-4 py-3 text-right font-mono text-muted-foreground">{run.duration}</td>
+        <td className="px-4 py-3 text-right">
+          <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ${st.bg} ${st.color}`}>
+            <st.icon className="w-3 h-3" />
+            {run.status === "completed" ? "Completed" : run.status === "running" ? "Running" : run.status === "archived" ? "Archived" : "Failed"}
+          </span>
+        </td>
+      </tr>
+    );
+  };
+
+  const toggleRunSelection = (runId: string) => {
+    setSelectedRunIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(runId)) next.delete(runId); else next.add(runId);
+      return next;
+    });
+  };
+
+  const toggleSelectAllRuns = () => {
+    const selectable = apiForecastRuns.filter((run) => run.status !== "archived").map((run) => run.id);
+    if (selectedRunIds.size === selectable.length) {
+      setSelectedRunIds(new Set());
+    } else {
+      setSelectedRunIds(new Set(selectable));
+    }
+  };
+
+  const handleBulkArchive = () => {
+    const runIds = Array.from(selectedRunIds);
+    if (!runIds.length) return;
+    if (!window.confirm(`Archive ${runIds.length} selected forecast run${runIds.length === 1 ? "" : "s"}?`)) return;
+    archiveRuns.mutate(runIds, {
+      onSuccess: () => {
+        setSelectedRunIds(new Set());
+        setSelectionMode(false);
+      },
+    });
+  };
+
+  const handleBulkUnarchive = () => {
+    const runIds = Array.from(selectedRunIds);
+    if (!runIds.length) return;
+    if (!window.confirm(`Restore ${runIds.length} selected archived forecast run${runIds.length === 1 ? "" : "s"}?`)) return;
+    unarchiveRuns.mutate(runIds, {
+      onSuccess: () => {
+        setSelectedRunIds(new Set());
+        setSelectionMode(false);
+      },
+    });
+  };
+
   const statusConfig: Record<string, { color: string; icon: any; bg: string }> = {
     completed: { color: "text-success", icon: CheckCircle, bg: "bg-success/10" },
     running: { color: "text-warning", icon: Clock, bg: "bg-warning/10" },
     failed: { color: "text-destructive", icon: AlertCircle, bg: "bg-destructive/10" },
+    archived: { color: "text-muted-foreground", icon: Clock, bg: "bg-muted" },
   };
 
   return (
@@ -39,10 +124,11 @@ const Forecasts = () => {
         <div className="flex items-center gap-1 bg-secondary/50 rounded-lg p-1">
           {[
             { key: "runs" as const, label: "Forecast Runs" },
+            { key: "archived" as const, label: "Archived" },
             { key: "models" as const, label: "Models" },
             { key: "accuracy" as const, label: "Accuracy" },
           ].map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            <button key={tab.key} onClick={() => handleTabChange(tab.key)}
               className={`px-3 py-1.5 rounded-md text-[12px] transition-colors ${
                 activeTab === tab.key ? "bg-card text-foreground font-medium shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}>
@@ -50,18 +136,62 @@ const Forecasts = () => {
             </button>
           ))}
         </div>
-        <button onClick={handleNewForecast}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] bg-primary text-primary-foreground font-medium hover:bg-primary/90">
-          <Play className="w-3.5 h-3.5" /> New Forecast Run
-        </button>
+        <div className="flex items-center gap-2">
+          {activeTab === "runs" && (
+            <>
+              <button onClick={() => setSelectionMode((m) => { if (m) setSelectedRunIds(new Set()); return !m; })}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border transition-colors ${selectionMode ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}>
+                <CheckSquare className="w-3.5 h-3.5" /> Select
+              </button>
+              {selectionMode && selectedRunIds.size > 0 && (
+                <button onClick={handleBulkArchive}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+                  <Archive className="w-3.5 h-3.5" /> Archive ({selectedRunIds.size})
+                </button>
+              )}
+            </>
+          )}
+          {activeTab === "archived" && (
+            <>
+              <button onClick={() => setSelectionMode((m) => { if (m) setSelectedRunIds(new Set()); return !m; })}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border transition-colors ${selectionMode ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}>
+                <CheckSquare className="w-3.5 h-3.5" /> Select
+              </button>
+              {selectionMode && selectedRunIds.size > 0 && (
+                <button onClick={handleBulkUnarchive}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+                  <Archive className="w-3.5 h-3.5" /> Restore ({selectedRunIds.size})
+                </button>
+              )}
+            </>
+          )}
+          <button onClick={handleNewForecast}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] bg-primary text-primary-foreground font-medium hover:bg-primary/90">
+            <Play className="w-3.5 h-3.5" /> New Forecast Run
+          </button>
+        </div>
       </div>
 
-      {activeTab === "runs" && (
+      {(activeTab === "runs" || activeTab === "archived") && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+            <span className="text-[13px] font-medium text-foreground">
+              {activeTab === "archived" ? "Archived Forecasts" : "Forecast Runs"}
+            </span>
+            {activeTab === "archived" && (
+              <span className="text-[11px] text-muted-foreground">Archived runs are hidden from the default list.</span>
+            )}
+          </div>
           <table className="w-full text-[13px]">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
+                {activeTab === "runs" && selectionMode && (
+                  <th className="px-4 py-3 w-10">
+                    <input type="checkbox" checked={apiForecastRuns.filter((run) => run.status !== "archived").length > 0 && selectedRunIds.size === apiForecastRuns.filter((run) => run.status !== "archived").length}
+                      onChange={toggleSelectAllRuns} className="rounded border-border" />
+                  </th>
+                )}
                 <th className="text-left px-4 py-3 text-subhead font-medium">Run ID</th>
                 <th className="text-left px-4 py-3 text-subhead font-medium">Name</th>
                 <th className="text-left px-4 py-3 text-subhead font-medium">Date</th>
@@ -73,29 +203,16 @@ const Forecasts = () => {
               </tr>
             </thead>
             <tbody>
-              {apiForecastRuns.map(run => {
-                const st = statusConfig[run.status] ?? statusConfig.completed;
-                return (
-                  <tr key={run.id} onClick={() => navigate(`/forecasts/${run.id}`)}
-                    className="border-b border-border/50 hover:bg-accent/50 cursor-pointer transition-colors">
-                    <td className="px-4 py-3 font-mono text-muted-foreground text-[11px]">{run.id}</td>
-                    <td className="px-4 py-3 font-medium text-foreground">{run.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{run.date}</td>
-                    <td className="px-4 py-3 text-muted-foreground flex items-center gap-1.5">
-                      <Cpu className="w-3 h-3" /> {run.model}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono">{run.products}</td>
-                    <td className="px-4 py-3 text-right font-mono">{run.accuracy ? `${run.accuracy}%` : "—"}</td>
-                    <td className="px-4 py-3 text-right font-mono text-muted-foreground">{run.duration}</td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full ${st.bg} ${st.color}`}>
-                        <st.icon className="w-3 h-3" />
-                        {run.status === "completed" ? "Completed" : run.status === "running" ? "Running" : "Failed"}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {(activeTab === "archived" ? archivedForecastRuns : apiForecastRuns).map((run) =>
+                renderRunRow(run, selectionMode && (activeTab === "runs" || activeTab === "archived"))
+              )}
+              {(activeTab === "archived" ? archivedForecastRuns : apiForecastRuns).length === 0 && (
+                <tr>
+                  <td colSpan={9} className="px-4 py-10 text-center text-[12px] text-muted-foreground">
+                    {activeTab === "archived" ? "No archived forecasts yet." : "No forecast runs found."}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </motion.div>

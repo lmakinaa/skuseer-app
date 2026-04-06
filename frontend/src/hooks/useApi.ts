@@ -33,6 +33,22 @@ export const useInsights = () => {
   return useQuery({ queryKey: ["dashboard", "insights", tid], queryFn: api.getInsights, enabled: !!tid });
 };
 
+export const useTopBarContext = () => {
+  const tid = useTenantId();
+  return useQuery({ queryKey: ["dashboard", "topBarContext", tid], queryFn: api.getTopBarContext, enabled: !!tid });
+};
+
+export const useTopBarSearch = (query: string) => {
+  const tid = useTenantId();
+  const normalizedQuery = query.trim();
+  return useQuery({
+    queryKey: ["dashboard", "topBarSearch", tid, normalizedQuery],
+    queryFn: () => api.searchTopBar(normalizedQuery),
+    enabled: !!tid && normalizedQuery.length > 1,
+    placeholderData: (prev) => prev,
+  });
+};
+
 // ── Products ──────────────────────────────────────────────────────────────────
 export const useProducts = (search: string, category: string) => {
   const tid = useTenantId();
@@ -50,6 +66,17 @@ export const useProduct = (id: string) => {
     queryKey: ["product", tid, id],
     queryFn: () => api.getProduct(id),
     enabled: !!id && !!tid,
+  });
+};
+
+export const useDeleteProduct = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteProduct,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["product"] });
+    },
   });
 };
 
@@ -123,11 +150,11 @@ export const useAccuracyByCategory = () => {
 };
 
 // ── Forecast Runs ────────────────────────────────────────────────────────────
-export const useForecastRuns = (productId?: string) => {
+export const useForecastRuns = (productId?: string, includeArchived = false) => {
   const tid = useTenantId();
   return useQuery({
-    queryKey: ["forecastRuns", tid, productId ?? ""],
-    queryFn: () => api.getForecastRuns(productId),
+    queryKey: ["forecastRuns", tid, productId ?? "", includeArchived],
+    queryFn: () => api.getForecastRuns(productId, includeArchived),
     enabled: !!tid,
   });
 };
@@ -138,6 +165,50 @@ export const useForecastRun = (runId: string) => {
     queryKey: ["forecastRun", tid, runId],
     queryFn: () => api.getForecastRun(runId),
     enabled: !!runId && !!tid,
+  });
+};
+
+export const useArchiveForecastRun = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.archiveForecastRun,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["forecastRuns"] });
+      qc.invalidateQueries({ queryKey: ["forecastRun"] });
+    },
+  });
+};
+
+export const useArchiveForecastRuns = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.archiveForecastRuns,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["forecastRuns"] });
+      qc.invalidateQueries({ queryKey: ["forecastRun"] });
+    },
+  });
+};
+
+export const useUnarchiveForecastRun = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.unarchiveForecastRun,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["forecastRuns"] });
+      qc.invalidateQueries({ queryKey: ["forecastRun"] });
+    },
+  });
+};
+
+export const useUnarchiveForecastRuns = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.unarchiveForecastRuns,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["forecastRuns"] });
+      qc.invalidateQueries({ queryKey: ["forecastRun"] });
+    },
   });
 };
 

@@ -11,6 +11,7 @@ from app.models.forecast_run import ForecastRun, ForecastRunResult
 from app.schemas.forecast import ForecastModelSchema, CategoryAccuracy
 from app.schemas.forecast_run import (
     ForecastRunListItem, ForecastRunDetail, ForecastRunResultItem, ForecastRunCreate,
+    ForecastRunArchiveRequest, ForecastRunUnarchiveRequest,
 )
 
 router = APIRouter()
@@ -56,10 +57,13 @@ def _format_datetime(dt: datetime.datetime) -> str:
 @router.get("/runs", response_model=list[ForecastRunListItem])
 def list_forecast_runs(
     product_id: str = Query(default="", description="Filter by product SKU"),
+    include_archived: bool = Query(default=False, description="Include archived runs"),
     ctx: TenantContext = Depends(require_permission("forecasts.view")),
     db: Session = Depends(get_db),
 ):
     query = db.query(ForecastRun).filter(ForecastRun.tenant_id == ctx.tenant.id)
+    if not include_archived:
+        query = query.filter(ForecastRun.status != "archived")
 
     if product_id:
         run_ids = (
@@ -190,3 +194,174 @@ def create_forecast_run(
         duration=run.duration or "—",
         model=run.model,
     )
+
+
+@router.post("/runs/{run_id}/archive", response_model=ForecastRunDetail)
+def archive_forecast_run(
+    run_id: str,
+    ctx: TenantContext = Depends(require_permission("forecasts.configure")),
+    db: Session = Depends(get_db),
+):
+    run = db.query(ForecastRun).filter(
+        ForecastRun.id == run_id,
+        ForecastRun.tenant_id == ctx.tenant.id,
+    ).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Forecast run not found")
+
+    run.status = "archived"
+    if not run.summary:
+        run.summary = "Archived run"
+    db.commit()
+    db.refresh(run)
+
+    results = (
+        db.query(ForecastRunResult)
+        .filter(ForecastRunResult.run_id == run_id)
+        .all()
+    )
+    return ForecastRunDetail(
+        id=run.id,
+        name=run.name,
+        status=run.status,
+        launched_at=run.launched_at.strftime("%Y-%m-%d %H:%M:%S") if run.launched_at else "",
+        finished_at=run.finished_at.strftime("%Y-%m-%d %H:%M:%S") if run.finished_at else None,
+        duration=run.duration or "—",
+        model=run.model,
+        accuracy=run.accuracy,
+        products_count=run.products_count,
+        products=run.products_scope,
+        summary=run.summary or "",
+        results=[
+            ForecastRunResultItem(
+                sku=r.product_id,
+                name=r.product_name,
+                forecast=r.forecast,
+                accuracy=r.accuracy,
+                status=r.status,
+            )
+            for r in results
+        ],
+    )
+
+@router.post("/runs/archive", response_model=list[ForecastRunListItem])
+def archive_forecast_runs(
+    body: ForecastRunArchiveRequest,
+    ctx: TenantContext = Depends(require_permission("forecasts.configure")),
+    db: Session = Depends(get_db),
+):
+    if not body.run_ids:
+        return []
+
+    runs = (
+        db.query(ForecastRun)
+        .filter(ForecastRun.tenant_id == ctx.tenant.id, ForecastRun.id.in_(body.run_ids))
+        .all()
+    )
+    for run in runs:
+        run.status = "archived"
+        if not run.summary:
+            run.summary = "Archived run"
+
+    db.commit()
+
+    return [
+        ForecastRunListItem(
+            id=r.id,
+            name=r.name,
+            date=_format_datetime(r.launched_at),
+            status=r.status,
+            products=r.products_count,
+            accuracy=r.accuracy,
+            duration=r.duration or "—",
+            model=r.model,
+        )
+        for r in runs
+    ]
+
+
+@router.post("/runs/{run_id}/unarchive", response_model=ForecastRunDetail)
+def unarchive_forecast_run(
+    run_id: str,
+    ctx: TenantContext = Depends(require_permission("forecasts.configure")),
+    db: Session = Depends(get_db),
+):
+    run = db.query(ForecastRun).filter(
+        ForecastRun.id == run_id,
+        ForecastRun.tenant_id == ctx.tenant.id,
+    ).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Forecast run not found")
+
+    if run.status == "archived":
+        run.status = "completed"
+    if not run.summary:
+        run.summary = "Restored run"
+    db.commit()
+    db.refresh(run)
+
+    results = (
+        db.query(ForecastRunResult)
+        .filter(ForecastRunResult.run_id == run_id)
+        .all()
+    )
+    return ForecastRunDetail(
+        id=run.id,
+        name=run.name,
+        status=run.status,
+        launched_at=run.launched_at.strftime("%Y-%m-%d %H:%M:%S") if run.launched_at else "",
+        finished_at=run.finished_at.strftime("%Y-%m-%d %H:%M:%S") if run.finished_at else None,
+        duration=run.duration or "—",
+        model=run.model,
+        accuracy=run.accuracy,
+        products_count=run.products_count,
+        products=run.products_scope,
+        summary=run.summary or "",
+        results=[
+            ForecastRunResultItem(
+                sku=r.product_id,
+                name=r.product_name,
+                forecast=r.forecast,
+                accuracy=r.accuracy,
+                status=r.status,
+            )
+            for r in results
+        ],
+    )
+
+
+@router.post("/runs/unarchive", response_model=list[ForecastRunListItem])
+def unarchive_forecast_runs(
+    body: ForecastRunUnarchiveRequest,
+    ctx: TenantContext = Depends(require_permission("forecasts.configure")),
+    db: Session = Depends(get_db),
+):
+    if not body.run_ids:
+        return []
+
+    runs = (
+        db.query(ForecastRun)
+        .filter(ForecastRun.tenant_id == ctx.tenant.id, ForecastRun.id.in_(body.run_ids))
+        .all()
+    )
+    for run in runs:
+        if run.status == "archived":
+            run.status = "completed"
+        if not run.summary:
+            run.summary = "Restored run"
+
+    db.commit()
+
+    return [
+        ForecastRunListItem(
+            id=r.id,
+            name=r.name,
+            date=_format_datetime(r.launched_at),
+            status=r.status,
+            products=r.products_count,
+            accuracy=r.accuracy,
+            duration=r.duration or "—",
+            model=r.model,
+        )
+        for r in runs
+    ]

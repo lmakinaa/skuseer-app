@@ -2,12 +2,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Clock, CheckCircle, AlertCircle, Cpu, BarChart3, Package } from "lucide-react";
 import PageLayout from "@/components/PageLayout";
-import { useForecastRun } from "@/hooks/useApi";
+import { useForecastRun, useArchiveForecastRun, useUnarchiveForecastRun } from "@/hooks/useApi";
 
 const ForecastDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: forecast } = useForecastRun(id ?? "");
+  const archiveForecastRun = useArchiveForecastRun();
+  const unarchiveForecastRun = useUnarchiveForecastRun();
 
   if (!forecast) {
     return (
@@ -24,8 +26,23 @@ const ForecastDetail = () => {
     completed: { color: "text-success", icon: CheckCircle, label: "Completed" },
     running: { color: "text-warning", icon: Clock, label: "Running" },
     failed: { color: "text-destructive", icon: AlertCircle, label: "Failed" },
+    archived: { color: "text-muted-foreground", icon: Clock, label: "Archived" },
   };
   const st = statusConfig[forecast.status] || statusConfig.completed;
+
+  const handleArchive = () => {
+    if (!window.confirm(`Archive ${forecast.name}? It will be hidden from active forecast lists.`)) return;
+    archiveForecastRun.mutate(forecast.id, {
+      onSuccess: () => navigate("/forecasts"),
+    });
+  };
+
+  const handleUnarchive = () => {
+    if (!window.confirm(`Restore ${forecast.name}? It will return to the active forecast list.`)) return;
+    unarchiveForecastRun.mutate(forecast.id, {
+      onSuccess: () => navigate("/forecasts"),
+    });
+  };
 
   const details = [
     { label: "Forecast ID", value: forecast.id },
@@ -40,9 +57,20 @@ const ForecastDetail = () => {
 
   return (
     <PageLayout title={forecast.name} subtitle={forecast.id}>
-      <button onClick={() => navigate("/forecasts")} className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="w-3.5 h-3.5" /> Back to Forecasts
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={() => navigate("/forecasts")} className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Forecasts
+        </button>
+        {forecast.status === "archived" ? (
+          <button onClick={handleUnarchive} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+            Restore Forecast
+          </button>
+        ) : (
+          <button onClick={handleArchive} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+            Archive Forecast
+          </button>
+        )}
+      </div>
 
       {/* Status banner */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}

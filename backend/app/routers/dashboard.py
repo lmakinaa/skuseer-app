@@ -1,18 +1,112 @@
 import datetime
-from fastapi import APIRouter, Depends
+from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.auth.dependencies import require_permission
 from app.auth.context import TenantContext
-from app.models import ChartDataPoint as ChartDataPointModel, ActivityLog as ActivityLogModel, Product
+from app.models import ChartDataPoint as ChartDataPointModel, ActivityLog as ActivityLogModel, Product, Category, ForecastRun
 from app.schemas.dashboard import (
     KPI, ForecastChartResponse, ChartDataPoint,
     InsightsResponse, TopProduct, ActivityLogItem,
+    TopBarSearchResult, TopBarContextResponse,
 )
 from app.services.insight_service import WEATHER_INSIGHTS, EVENT_INSIGHTS, PROMO_INSIGHTS
 
 router = APIRouter()
+
+
+@router.get("/context", response_model=TopBarContextResponse)
+def get_top_bar_context(
+    ctx: TenantContext = Depends(require_permission("dashboard.view")),
+):
+    now = datetime.datetime.utcnow()
+    if ctx.tenant.timezone:
+        try:
+            now = datetime.datetime.now(ZoneInfo(ctx.tenant.timezone))
+        except Exception:
+            now = datetime.datetime.utcnow()
+    month_start = now.replace(day=1)
+    if now.month == 12:
+        next_month = now.replace(year=now.year + 1, month=1, day=1)
+    else:
+        next_month = now.replace(month=now.month + 1, day=1)
+    month_end = next_month - datetime.timedelta(days=1)
+    return TopBarContextResponse(
+        date_label=now.strftime("%b %d, %Y"),
+        range_label=f"{month_start.strftime('%b')} {month_start.day} – {month_end.strftime('%b')} {month_end.day}, {month_end.year}",
+        timezone=ctx.tenant.timezone or "UTC",
+    )
+
+
+@router.get("/search", response_model=list[TopBarSearchResult])
+def search_top_bar(
+    q: str = Query(..., min_length=1),
+    ctx: TenantContext = Depends(require_permission("dashboard.view")),
+    db: Session = Depends(get_db),
+):
+    query = q.strip()
+    if not query:
+        return []
+
+    pattern = f"%{query}%"
+    results: list[TopBarSearchResult] = []
+
+    products = (
+        db.query(Product)
+        .filter(Product.tenant_id == ctx.tenant.id)
+        .filter(or_(Product.id.ilike(pattern), Product.name.ilike(pattern), Product.category.ilike(pattern)))
+        .order_by(Product.name.asc())
+        .limit(5)
+        .all()
+    )
+    for product in products:
+        results.append(TopBarSearchResult(
+            id=product.id,
+            type="product",
+            title=product.name,
+            subtitle=f"{product.category} · SKU {product.id}",
+            path=f"/products/{product.id}",
+        ))
+
+    categories = (
+        db.query(Category)
+        .filter(Category.tenant_id == ctx.tenant.id)
+        .filter(Category.name.ilike(pattern))
+        .order_by(Category.name.asc())
+        .limit(5)
+        .all()
+    )
+    for category in categories:
+        results.append(TopBarSearchResult(
+            id=category.id,
+            type="category",
+            title=category.name,
+            subtitle=f"{category.products} products",
+            path="/settings",
+        ))
+
+    forecast_runs = (
+        db.query(ForecastRun)
+        .filter(ForecastRun.tenant_id == ctx.tenant.id)
+        .filter(or_(ForecastRun.id.ilike(pattern), ForecastRun.name.ilike(pattern), ForecastRun.model.ilike(pattern)))
+        .order_by(ForecastRun.launched_at.desc())
+        .limit(5)
+        .all()
+    )
+    for run in forecast_runs:
+        results.append(TopBarSearchResult(
+            id=run.id,
+            type="forecast_run",
+            title=run.name,
+            subtitle=f"{run.model} · {run.status}",
+            path=f"/forecasts/{run.id}",
+        ))
+
+    return results[:10]
 
 
 @router.get("/kpis", response_model=list[KPI])

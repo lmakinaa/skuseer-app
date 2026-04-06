@@ -2,6 +2,9 @@
   "realm": "stockseer",
   "enabled": true,
   "displayName": "StockSeer",
+  "loginTheme": "stockseer",
+  "accountTheme": "stockseer",
+  "emailTheme": "stockseer",
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
@@ -9,6 +12,12 @@
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 604800,
+  "ssoSessionMaxLifespan": 604800,
+  "offlineSessionIdleTimeout": 604800,
+  "offlineSessionMaxLifespan": 604800,
+  "revokeRefreshToken": true,
 
   "roles": {
     "realm": [

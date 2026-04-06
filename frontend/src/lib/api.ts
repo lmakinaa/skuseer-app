@@ -85,6 +85,20 @@ export interface InsightsResponse {
   promos: PromoInsight[];
 }
 
+export interface TopBarSearchResult {
+  id: string;
+  type: "product" | "category" | "forecast_run";
+  title: string;
+  subtitle: string;
+  path: string;
+}
+
+export interface TopBarContextResponse {
+  dateLabel: string;
+  rangeLabel: string;
+  timezone: string;
+}
+
 export interface TopProduct {
   name: string;
   sku: string;
@@ -352,6 +366,9 @@ export const getForecastChart = () => request<ForecastChartResponse>("/api/dashb
 export const getActivity = () => request<ActivityLogItem[]>("/api/dashboard/activity");
 export const getTopProducts = () => request<TopProduct[]>("/api/dashboard/top-products");
 export const getInsights = () => request<InsightsResponse>("/api/dashboard/insights");
+export const getTopBarContext = () => request<TopBarContextResponse>("/api/dashboard/context");
+export const searchTopBar = (query: string) =>
+  request<TopBarSearchResult[]>(`/api/dashboard/search?q=${encodeURIComponent(query)}`);
 
 // Products
 export const getProducts = (search: string, category: string, page = 1) =>
@@ -360,6 +377,9 @@ export const getProducts = (search: string, category: string, page = 1) =>
   );
 export const getProduct = (id: string) =>
   request<ProductDetailResponse>(`/api/products/${id}`);
+
+export const deleteProduct = (productId: string) =>
+  requestNoContent(`/api/products/${productId}`, { method: "DELETE" });
 
 export const createProduct = (body: {
   id: string;
@@ -476,11 +496,34 @@ export interface ForecastRunDetail {
   results: ForecastRunResultItem[];
 }
 
-export const getForecastRuns = (productId?: string) =>
-  request<ForecastRunListItem[]>(`/api/forecasts/runs${productId ? `?product_id=${productId}` : ""}`);
+export const getForecastRuns = (productId?: string, includeArchived = false) => {
+  const params = new URLSearchParams();
+  if (productId) params.set("product_id", productId);
+  if (includeArchived) params.set("include_archived", "true");
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+  return request<ForecastRunListItem[]>(`/api/forecasts/runs${suffix}`);
+};
 
 export const getForecastRun = (runId: string) =>
   request<ForecastRunDetail>(`/api/forecasts/runs/${runId}`);
+
+export const archiveForecastRun = (runId: string) =>
+  request<ForecastRunDetail>(`/api/forecasts/runs/${runId}/archive`, { method: "POST" });
+
+export const archiveForecastRuns = (runIds: string[]) =>
+  request<ForecastRunListItem[]>("/api/forecasts/runs/archive", {
+    method: "POST",
+    body: JSON.stringify({ run_ids: runIds }),
+  });
+
+export const unarchiveForecastRun = (runId: string) =>
+  request<ForecastRunDetail>(`/api/forecasts/runs/${runId}/unarchive`, { method: "POST" });
+
+export const unarchiveForecastRuns = (runIds: string[]) =>
+  request<ForecastRunListItem[]>("/api/forecasts/runs/unarchive", {
+    method: "POST",
+    body: JSON.stringify({ run_ids: runIds }),
+  });
 
 export const createForecastRun = (body: { name: string; model?: string; productIds?: string[] }) =>
   request<ForecastRunListItem>("/api/forecasts/runs", {

@@ -42,3 +42,11 @@ class ForecastRunCreate(BaseModel):
     name: str
     model: str = "Smart Forecast"
     product_ids: list[str] = []        # empty = all products
+
+
+class ForecastRunArchiveRequest(BaseModel):
+    run_ids: list[str]
+
+
+class ForecastRunUnarchiveRequest(BaseModel):
+    run_ids: list[str]

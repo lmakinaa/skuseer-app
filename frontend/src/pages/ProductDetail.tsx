@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowUp, ArrowDown, TrendingUp, Package, DollarSign, Target,
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useState } from "react";
 import PageLayout from "@/components/PageLayout";
-import { useProduct, useProductSalesHistory, useForecastRuns, useCreateForecastRun } from "@/hooks/useApi";
+import { useProduct, useProductSalesHistory, useForecastRuns, useCreateForecastRun, useDeleteProduct } from "@/hooks/useApi";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -13,6 +13,7 @@ const ProductDetail = () => {
   const { data: salesHistory = [] } = useProductSalesHistory(id ?? "");
   const { data: forecastHistory = [] } = useForecastRuns(id);
   const createRun = useCreateForecastRun();
+  const deleteProduct = useDeleteProduct();
   const [activeTab, setActiveTab] = useState<"overview" | "sales" | "forecasts">("overview");
 
   const product = apiDetail?.product;
@@ -55,6 +56,13 @@ const ProductDetail = () => {
     });
   };
 
+  const handleDeleteProduct = () => {
+    if (!window.confirm(`Delete ${product.name}? This cannot be undone.`)) return;
+    deleteProduct.mutate(product.id, {
+      onSuccess: () => navigate("/products"),
+    });
+  };
+
   return (
     <PageLayout title={product.name} subtitle={product.id}>
       {/* Top bar */}
@@ -63,10 +71,16 @@ const ProductDetail = () => {
           className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Products
         </button>
-        <button onClick={handleRunForecast}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] bg-primary text-primary-foreground font-medium hover:bg-primary/90">
-          <Play className="w-3.5 h-3.5" /> Run Forecast
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={handleDeleteProduct}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-destructive/30 text-destructive font-medium hover:bg-destructive/10">
+            Delete Product
+          </button>
+          <button onClick={handleRunForecast}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] bg-primary text-primary-foreground font-medium hover:bg-primary/90">
+            <Play className="w-3.5 h-3.5" /> Run Forecast
+          </button>
+        </div>
       </div>
 
       {/* Low stock alert */}

@@ -108,6 +108,17 @@ export const useExportProductsCsv = () => {
   return useMutation({ mutationFn: api.exportProductsCsv });
 };
 
+// ── Sales Data ───────────────────────────────────────────────────────────────
+export const useImportSalesCsv = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.importSalesCsv,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["productSalesHistory"] });
+    },
+  });
+};
+
 // ── Categories ────────────────────────────────────────────────────────────────
 export const useCategories = () => {
   const tid = useTenantId();
@@ -156,6 +167,11 @@ export const useForecastRuns = (productId?: string, includeArchived = false) => 
     queryKey: ["forecastRuns", tid, productId ?? "", includeArchived],
     queryFn: () => api.getForecastRuns(productId, includeArchived),
     enabled: !!tid,
+    refetchInterval: (query) => {
+      const runs = query.state.data;
+      const hasRunning = runs?.some((r) => r.status === "running");
+      return hasRunning ? 3000 : false;
+    },
   });
 };
 

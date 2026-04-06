@@ -439,6 +439,33 @@ export const exportProductsCsv = async (): Promise<Blob> => {
   return await res.blob();
 };
 
+// Sales Data
+export interface SalesImportResponse {
+  imported: number;
+  skipped: number;
+}
+
+export const importSalesCsv = async (file: File): Promise<SalesImportResponse> => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE_URL}/api/products/sales/import`, {
+    method: "POST",
+    body: form,
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  }
+  return camelizeKeys(await res.json()) as SalesImportResponse;
+};
+
+export const addSalesRecord = (productId: string, body: { date: string; quantity: number }) =>
+  request<SalesHistoryPoint>(`/api/products/${productId}/sales`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
 // Categories
 export const getCategories = () => request<Category[]>("/api/categories");
 

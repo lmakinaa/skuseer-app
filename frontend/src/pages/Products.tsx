@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, ArrowUp, ArrowDown, Filter, Plus, Play, CheckSquare, Trash2 } from "lucide-react";
+import { Search, ArrowUp, ArrowDown, Filter, Plus, Play, CheckSquare, Trash2, Upload } from "lucide-react";
 import PageLayout from "@/components/PageLayout";
 import AddProductDialog from "@/components/AddProductDialog";
-import { useProducts, useCategories, useCreateProduct, useCreateForecastRun, useDeleteProduct } from "@/hooks/useApi";
+import { useProducts, useCategories, useCreateProduct, useCreateForecastRun, useDeleteProduct, useImportSalesCsv } from "@/hooks/useApi";
 
 const Products = () => {
   const navigate = useNavigate();
@@ -19,6 +19,8 @@ const Products = () => {
   const createProduct = useCreateProduct();
   const createRun = useCreateForecastRun();
   const deleteProduct = useDeleteProduct();
+  const importSales = useImportSalesCsv();
+  const salesFileRef = useRef<HTMLInputElement>(null);
 
   const products = apiProductsData?.items ?? [];
 
@@ -74,6 +76,13 @@ const Products = () => {
     });
   };
 
+  const handleSalesFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    importSales.mutate(file);
+    e.target.value = "";
+  };
+
   return (
     <PageLayout title="Products" subtitle={`${products.length} active products`}>
       {/* Action bar */}
@@ -103,6 +112,12 @@ const Products = () => {
           <button onClick={() => handleRunForecast("all")}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
             <Play className="w-3.5 h-3.5" /> Forecast All
+          </button>
+          <input ref={salesFileRef} type="file" accept=".csv" className="hidden" onChange={handleSalesFileChange} />
+          <button onClick={() => salesFileRef.current?.click()}
+            disabled={importSales.isPending}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50">
+            <Upload className="w-3.5 h-3.5" /> {importSales.isPending ? "Importing..." : "Import Sales Data"}
           </button>
           <button onClick={() => setShowAddDialog(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] bg-primary text-primary-foreground font-medium hover:bg-primary/90">

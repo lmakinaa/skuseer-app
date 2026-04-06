@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Clock, CheckCircle, AlertCircle, Cpu, BarChart3, Package } from "lucide-react";
+import { useState } from "react";
 import PageLayout from "@/components/PageLayout";
 import { useForecastRun, useArchiveForecastRun, useUnarchiveForecastRun } from "@/hooks/useApi";
 
@@ -10,6 +11,7 @@ const ForecastDetail = () => {
   const { data: forecast } = useForecastRun(id ?? "");
   const archiveForecastRun = useArchiveForecastRun();
   const unarchiveForecastRun = useUnarchiveForecastRun();
+  const [tableTab, setTableTab] = useState<"results" | "daily">("results");
 
   if (!forecast) {
     return (
@@ -54,6 +56,11 @@ const ForecastDetail = () => {
     { label: "Products Processed", value: `${forecast.productsCount} SKUs` },
     { label: "Average Accuracy", value: forecast.accuracy ? `${forecast.accuracy}%` : "—" },
   ];
+
+  const dailyForecastPoints = [...(forecast.forecastPoints ?? [])].sort((a, b) => {
+    if (a.sku !== b.sku) return a.sku.localeCompare(b.sku);
+    return a.date.localeCompare(b.date);
+  });
 
   return (
     <PageLayout title={forecast.name} subtitle={forecast.id}>
@@ -117,42 +124,88 @@ const ForecastDetail = () => {
         </div>
       </motion.div>
 
-      {/* Results table */}
-      {forecast.results.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-          className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-border">
-            <span className="text-[13px] font-medium text-foreground">Forecast Results</span>
+      {/* Forecast tables */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+        className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <span className="text-[13px] font-medium text-foreground">Forecast Data</span>
+          <div className="flex items-center gap-1 bg-secondary/50 rounded-lg p-1">
+            <button
+              onClick={() => setTableTab("results")}
+              className={`px-3 py-1.5 rounded-md text-[12px] transition-colors ${
+                tableTab === "results" ? "bg-card text-foreground font-medium shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Results by Product
+            </button>
+            <button
+              onClick={() => setTableTab("daily")}
+              className={`px-3 py-1.5 rounded-md text-[12px] transition-colors ${
+                tableTab === "daily" ? "bg-card text-foreground font-medium shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Daily Forecast Points
+            </button>
           </div>
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-border bg-secondary/50">
-                <th className="text-left px-4 py-3 text-subhead font-medium">SKU</th>
-                <th className="text-left px-4 py-3 text-subhead font-medium">Product</th>
-                <th className="text-right px-4 py-3 text-subhead font-medium">30-Day Forecast</th>
-                <th className="text-right px-4 py-3 text-subhead font-medium">Accuracy</th>
-                <th className="text-right px-4 py-3 text-subhead font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {forecast.results.map((r: any) => (
-                <tr key={r.sku} className="border-b border-border/50 hover:bg-accent/50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/products/${r.sku}`)}>
-                  <td className="px-4 py-3 font-mono text-muted-foreground text-[11px]">{r.sku}</td>
-                  <td className="px-4 py-3 font-medium text-foreground">{r.name}</td>
-                  <td className="px-4 py-3 text-right font-mono">{r.forecast.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right font-mono">{r.accuracy}%</td>
-                  <td className="px-4 py-3 text-right">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${r.status === "good" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
-                      {r.status === "good" ? "Good" : "Needs Review"}
-                    </span>
-                  </td>
+        </div>
+
+        {tableTab === "results" ? (
+          forecast.results.length > 0 ? (
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-border bg-secondary/50">
+                  <th className="text-left px-4 py-3 text-subhead font-medium">SKU</th>
+                  <th className="text-left px-4 py-3 text-subhead font-medium">Product</th>
+                  <th className="text-right px-4 py-3 text-subhead font-medium">30-Day Forecast</th>
+                  <th className="text-right px-4 py-3 text-subhead font-medium">Accuracy</th>
+                  <th className="text-right px-4 py-3 text-subhead font-medium">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </motion.div>
-      )}
+              </thead>
+              <tbody>
+                {forecast.results.map((r: any) => (
+                  <tr key={r.sku} className="border-b border-border/50 hover:bg-accent/50 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/products/${r.sku}`)}>
+                    <td className="px-4 py-3 font-mono text-muted-foreground text-[11px]">{r.sku}</td>
+                    <td className="px-4 py-3 font-medium text-foreground">{r.name}</td>
+                    <td className="px-4 py-3 text-right font-mono">{r.forecast.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right font-mono">{r.accuracy}%</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full ${r.status === "good" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                        {r.status === "good" ? "Good" : "Needs Review"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="px-4 py-8 text-center text-[12px] text-muted-foreground">No forecast product results yet.</div>
+          )
+        ) : (
+          dailyForecastPoints.length > 0 ? (
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-border bg-secondary/50">
+                  <th className="text-left px-4 py-3 text-subhead font-medium">SKU</th>
+                  <th className="text-left px-4 py-3 text-subhead font-medium">Date</th>
+                  <th className="text-right px-4 py-3 text-subhead font-medium">Predicted Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyForecastPoints.map((p, idx) => (
+                  <tr key={`${p.sku}-${p.date}-${idx}`} className="border-b border-border/50">
+                    <td className="px-4 py-3 font-mono text-muted-foreground text-[11px]">{p.sku}</td>
+                    <td className="px-4 py-3 font-mono text-muted-foreground text-[11px]">{p.date}</td>
+                    <td className="px-4 py-3 text-right font-mono">{Math.round(p.quantity).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="px-4 py-8 text-center text-[12px] text-muted-foreground">No daily forecast points available yet.</div>
+          )
+        )}
+      </motion.div>
     </PageLayout>
   );
 };

@@ -9,6 +9,7 @@ import Promotions from "./pages/Promotions";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { Toaster } from "./components/ui/sonner";
 
 const App = () => (
   <BrowserRouter>
@@ -25,6 +26,7 @@ const App = () => (
         <Route path="*" element={<NotFound />} />
       </Routes>
     </ProtectedRoute>
+    <Toaster richColors closeButton position="top-right" />
   </BrowserRouter>
 );
 

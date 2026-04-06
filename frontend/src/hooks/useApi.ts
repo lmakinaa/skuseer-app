@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as api from "@/lib/api";
 import { useTenant } from "@/auth/TenantContext";
+import { toast } from "@/components/ui/sonner";
 
 function useTenantId() {
   const { currentTenant } = useTenant();
@@ -97,9 +98,17 @@ export const useImportProductsCsv = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: api.importProductsCsv,
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["products"] });
       qc.invalidateQueries({ queryKey: ["productImportHistory"] });
+      toast.success("Products imported", {
+        description: `${res.items} item(s) processed from ${res.file}.`,
+      });
+    },
+    onError: (err) => {
+      toast.error("Product import failed", {
+        description: err instanceof Error ? err.message : "Could not import products CSV.",
+      });
     },
   });
 };
@@ -113,8 +122,35 @@ export const useImportSalesCsv = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: api.importSalesCsv,
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["productSalesHistory"] });
+      toast.success("Sales imported", {
+        description: `Imported ${res.imported} row(s), skipped ${res.skipped}.`,
+      });
+    },
+    onError: (err) => {
+      toast.error("Sales import failed", {
+        description: err instanceof Error ? err.message : "Could not import sales CSV.",
+      });
+    },
+  });
+};
+
+export const useImportProductSalesCsv = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ productId, file }: { productId: string; file: File }) =>
+      api.importProductSalesCsv(productId, file),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["productSalesHistory"] });
+      toast.success("Product sales imported", {
+        description: `Imported ${res.imported} row(s), skipped ${res.skipped}.`,
+      });
+    },
+    onError: (err) => {
+      toast.error("Product sales import failed", {
+        description: err instanceof Error ? err.message : "Could not import product sales CSV.",
+      });
     },
   });
 };
@@ -232,7 +268,17 @@ export const useCreateForecastRun = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: api.createForecastRun,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["forecastRuns"] }),
+    onSuccess: (run) => {
+      qc.invalidateQueries({ queryKey: ["forecastRuns"] });
+      toast.success("Forecast started", {
+        description: `${run.name} is running in background (${run.id}).`,
+      });
+    },
+    onError: (err) => {
+      toast.error("Could not start forecast", {
+        description: err instanceof Error ? err.message : "Forecast run creation failed.",
+      });
+    },
   });
 };
 

@@ -1,6 +1,7 @@
 import datetime
+import json
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -10,9 +11,10 @@ from app.models import ForecastModel, Category
 from app.models.forecast_run import ForecastRun, ForecastRunResult
 from app.schemas.forecast import ForecastModelSchema, CategoryAccuracy
 from app.schemas.forecast_run import (
-    ForecastRunListItem, ForecastRunDetail, ForecastRunResultItem, ForecastRunCreate,
+    ForecastRunListItem, ForecastRunDetail, ForecastRunResultItem, ForecastPointItem, ForecastRunCreate,
     ForecastRunArchiveRequest, ForecastRunUnarchiveRequest,
 )
+from app.services.forecast_service import execute_forecast_run
 
 router = APIRouter()
 
@@ -108,6 +110,13 @@ def get_forecast_run(
         .all()
     )
 
+    raw_points = []
+    if run.forecast_points_json:
+        try:
+            raw_points = json.loads(run.forecast_points_json)
+        except Exception:
+            raw_points = []
+
     return ForecastRunDetail(
         id=run.id,
         name=run.name,
@@ -130,16 +139,26 @@ def get_forecast_run(
             )
             for r in results
         ],
+        forecast_points=[
+            ForecastPointItem(
+                sku=p.get("product_id", ""),
+                date=p.get("date", ""),
+                quantity=float(p.get("forecast", 0)),
+            )
+            for p in raw_points
+            if p.get("product_id") and p.get("date") is not None
+        ],
     )
 
 
 @router.post("/runs", response_model=ForecastRunListItem, status_code=201)
 def create_forecast_run(
     body: ForecastRunCreate,
+    background_tasks: BackgroundTasks,
     ctx: TenantContext = Depends(require_permission("forecasts.configure")),
     db: Session = Depends(get_db),
 ):
-    """Placeholder: creates a completed run immediately with mock results."""
+    """Create a forecast run and execute it asynchronously via background task."""
     from app.models import Product
 
     if body.product_ids:
@@ -153,36 +172,30 @@ def create_forecast_run(
         products = db.query(Product).filter(Product.tenant_id == ctx.tenant.id).all()
         scope = "All Products"
 
+    if not products:
+        raise HTTPException(status_code=400, detail="No products found for this tenant")
+
     now = datetime.datetime.utcnow()
     run = ForecastRun(
         tenant_id=ctx.tenant.id,
         name=body.name,
-        status="completed",
+        status="running",
         model=body.model,
         products_scope=scope,
         products_count=len(products),
-        accuracy=round(sum(p.accuracy for p in products) / max(len(products), 1), 1),
-        duration="0s (mock)",
-        summary=f"Processed {len(products)} SKUs. Placeholder run — no real ML executed.",
         launched_at=now,
-        finished_at=now,
     )
     db.add(run)
-    db.flush()
-
-    for p in products:
-        result = ForecastRunResult(
-            run_id=run.id,
-            product_id=p.id,
-            product_name=p.name,
-            forecast=p.forecast,
-            accuracy=p.accuracy,
-            status="good" if p.accuracy >= 95.0 else "review",
-        )
-        db.add(result)
-
     db.commit()
     db.refresh(run)
+
+    product_ids = [p.id for p in products]
+    background_tasks.add_task(
+        execute_forecast_run,
+        run_id=run.id,
+        product_ids=product_ids,
+        tenant_id=ctx.tenant.id,
+    )
 
     return ForecastRunListItem(
         id=run.id,
@@ -220,6 +233,13 @@ def archive_forecast_run(
         .filter(ForecastRunResult.run_id == run_id)
         .all()
     )
+    raw_points = []
+    if run.forecast_points_json:
+        try:
+            raw_points = json.loads(run.forecast_points_json)
+        except Exception:
+            raw_points = []
+
     return ForecastRunDetail(
         id=run.id,
         name=run.name,
@@ -241,6 +261,15 @@ def archive_forecast_run(
                 status=r.status,
             )
             for r in results
+        ],
+        forecast_points=[
+            ForecastPointItem(
+                sku=p.get("product_id", ""),
+                date=p.get("date", ""),
+                quantity=float(p.get("forecast", 0)),
+            )
+            for p in raw_points
+            if p.get("product_id") and p.get("date") is not None
         ],
     )
 
@@ -305,6 +334,13 @@ def unarchive_forecast_run(
         .filter(ForecastRunResult.run_id == run_id)
         .all()
     )
+    raw_points = []
+    if run.forecast_points_json:
+        try:
+            raw_points = json.loads(run.forecast_points_json)
+        except Exception:
+            raw_points = []
+
     return ForecastRunDetail(
         id=run.id,
         name=run.name,
@@ -326,6 +362,15 @@ def unarchive_forecast_run(
                 status=r.status,
             )
             for r in results
+        ],
+        forecast_points=[
+            ForecastPointItem(
+                sku=p.get("product_id", ""),
+                date=p.get("date", ""),
+                quantity=float(p.get("forecast", 0)),
+            )
+            for p in raw_points
+            if p.get("product_id") and p.get("date") is not None
         ],
     )
 

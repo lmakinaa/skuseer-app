@@ -69,3 +69,13 @@ class ProductDetailResponse(BaseModel):
 class SalesHistoryPoint(BaseModel):
     date: str
     sales: int
+
+
+class SalesRecordCreate(BaseModel):
+    date: str       # YYYY-MM-DD
+    quantity: int
+
+
+class SalesImportResponse(BaseModel):
+    imported: int
+    skipped: int

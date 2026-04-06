@@ -12,7 +12,7 @@ import {
   useTenantMembers, useInviteMember, useRemoveMember,
   useRoles, useAllPermissions, useCreateRole, useUpdateRole, useRolePermissions, useSetRolePermissions, useDeleteRole,
   useCategories, useCreateCategory, useUpdateCategory, useCreateSubcategory,
-  useProductImportHistory, useImportProductsCsv, useExportProductsCsv,
+  useProductImportHistory, useImportProductsCsv, useExportProductsCsv, useImportSalesCsv,
 } from "@/hooks/useApi";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ const toJoinedAt = (acceptedAt: string | null) => {
 /* ── component ── */
 const Settings = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const salesFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { data: tenant } = useCurrentTenant();
   const updateTenant = useUpdateCurrentTenant();
@@ -84,6 +85,7 @@ const Settings = () => {
 
   const { data: importHistory = [] } = useProductImportHistory();
   const importProducts = useImportProductsCsv();
+  const importSales = useImportSalesCsv();
   const exportProducts = useExportProductsCsv();
 
   const { data: integrations = [] } = useIntegrations();
@@ -424,15 +426,24 @@ const Settings = () => {
           {/* Import / Export */}
           <div className="bg-card border border-border rounded-xl p-6">
             <h3 className="text-[15px] font-semibold text-foreground mb-1">Import & Export</h3>
-            <p className="text-[12px] text-muted-foreground mb-4">Bulk import products from CSV/Excel or export your catalog.</p>
+            <p className="text-[12px] text-muted-foreground mb-4">Bulk import products or sales from CSV, or export your catalog.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
               <button className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-colors" onClick={() => fileInputRef.current?.click()}>
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Upload className="w-5 h-5 text-primary" /></div>
                 <div className="text-left">
                   <div className="text-[13px] font-medium text-foreground">Import Products</div>
-                  <div className="text-[11px] text-muted-foreground">Upload CSV or Excel file</div>
+                  <div className="text-[11px] text-muted-foreground">SKU, name, category, price, etc.</div>
                 </div>
               </button>
+              <button className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-colors" onClick={() => salesFileInputRef.current?.click()}>
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center"><Upload className="w-5 h-5 text-primary" /></div>
+                <div className="text-left">
+                  <div className="text-[13px] font-medium text-foreground">Import Sales</div>
+                  <div className="text-[11px] text-muted-foreground">SKU, date, sold quantity</div>
+                </div>
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-1 gap-3 mb-6">
               <button
                 className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-border hover:border-primary/40 hover:bg-primary/5 transition-colors"
                 onClick={async () => {
@@ -471,6 +482,17 @@ const Settings = () => {
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) importProducts.mutate(file);
+              }}
+            />
+            <input
+              ref={salesFileInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) importSales.mutate(file);
+                e.target.value = "";
               }}
             />
           </div>

@@ -1,25 +1,126 @@
 import csv
 import io
 import math
-import random
 import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError
 
 from app.database import get_db
 from app.auth.dependencies import require_permission
 from app.auth.context import TenantContext
 from app.models import Product, ProductImportJob
+from app.models.sales import SalesRecord
 from app.schemas.product import (
     ProductListResponse, ProductDetailResponse,
     ProductChartPoint, AIInsight, Product as ProductSchema,
     ProductCreate, ProductUpdate, SalesHistoryPoint,
+    SalesRecordCreate, SalesImportResponse,
 )
 from app.schemas.product_import import ProductImportResponse
 
 router = APIRouter()
+
+
+def _normalize_key(value: str) -> str:
+    return "".join(ch for ch in value.strip().lower() if ch.isalnum())
+
+
+def _parse_int(value, default: int = 0) -> int:
+    try:
+        if value is None:
+            return default
+        return int(float(str(value).strip()))
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_float(value, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return default
+        return float(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def _parse_csv_rows(contents: bytes) -> list[dict[str, str]]:
+    text = contents.decode("utf-8-sig")
+    best_rows: list[dict[str, str]] = []
+    best_score = -1
+    for delimiter in [",", "|", ";", "\t"]:
+        reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
+        rows = list(reader)
+        field_count = len(reader.fieldnames or [])
+        if field_count > best_score:
+            best_score = field_count
+            best_rows = rows
+    return best_rows
+
+
+def _detect_delimiter(text: str) -> str:
+    candidates = [",", "|", ";", "\t"]
+    best = ","
+    best_count = -1
+    sample = text.splitlines()[:5]
+    for d in candidates:
+        count = sum(line.count(d) for line in sample)
+        if count > best_count:
+            best_count = count
+            best = d
+    return best
+
+
+def _iter_sales_csv_rows(contents: bytes) -> list[tuple[str | None, str, str]]:
+    """
+    Returns rows as (product_id_or_none, date_str, quantity_str)
+    Supports header and no-header CSV files.
+    """
+    text = contents.decode("utf-8-sig")
+    delimiter = _detect_delimiter(text)
+
+    # First try header-based parsing
+    reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
+    fieldnames = [(_normalize_key(f) if f else "") for f in (reader.fieldnames or [])]
+    has_header = any(
+        fn in {"date", "day", "quantity", "soldquantity", "sales", "qty", "sku", "productid", "productsku"}
+        for fn in fieldnames
+    )
+
+    if has_header:
+        rows: list[tuple[str | None, str, str]] = []
+        for row in reader:
+            normalized = {
+                _normalize_key(str(k)): (v.strip() if isinstance(v, str) else "")
+                for k, v in row.items()
+                if k
+            }
+            pid = normalized.get("productid") or normalized.get("sku") or normalized.get("productsku")
+            date_str = normalized.get("date") or normalized.get("day") or ""
+            qty_str = normalized.get("quantity") or normalized.get("soldquantity") or normalized.get("sales") or normalized.get("qty") or ""
+            if date_str and qty_str:
+                rows.append((pid, date_str, qty_str))
+        return rows
+
+    # Fallback: no-header rows like: sku|yyyy-mm-dd|12 or yyyy-mm-dd|12
+    raw_reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    rows: list[tuple[str | None, str, str]] = []
+    for raw in raw_reader:
+        cols = [c.strip() for c in raw if c is not None]
+        if len(cols) < 2:
+            continue
+
+        first = cols[0].lower()
+        if first in {"sku", "product_id", "productid", "date"}:
+            continue
+
+        if len(cols) >= 3:
+            rows.append((cols[0], cols[1], cols[2]))
+        else:
+            rows.append((None, cols[0], cols[1]))
+    return rows
 
 
 @router.get("", response_model=ProductListResponse)
@@ -90,13 +191,17 @@ def import_history(
     ctx: TenantContext = Depends(require_permission("products.import")),
     db: Session = Depends(get_db),
 ):
-    jobs = (
-        db.query(ProductImportJob)
-        .filter(ProductImportJob.tenant_id == ctx.tenant.id)
-        .order_by(ProductImportJob.created_at.desc())
-        .limit(20)
-        .all()
-    )
+    try:
+        jobs = (
+            db.query(ProductImportJob)
+            .filter(ProductImportJob.tenant_id == ctx.tenant.id)
+            .order_by(ProductImportJob.created_at.desc())
+            .limit(20)
+            .all()
+        )
+    except OperationalError:
+        # Backward compatibility for databases that haven't run the migration yet
+        return []
     return [
         ProductImportResponse(
             id=j.id,
@@ -119,60 +224,90 @@ async def import_products(
         raise HTTPException(status_code=400, detail="Only .csv files are accepted")
 
     contents = await file.read()
-    text = contents.decode("utf-8")
-    reader = csv.DictReader(io.StringIO(text))
+    rows = _parse_csv_rows(contents)
 
     count = 0
-    for row in reader:
-        product_id = row.get("id") or row.get("sku")
-        name = row.get("name")
+    for row in rows:
+        normalized = {
+            _normalize_key(str(key)): (value.strip() if isinstance(value, str) else value)
+            for key, value in row.items()
+            if key
+        }
+
+        product_id = (
+            normalized.get("sku")
+            or normalized.get("id")
+            or normalized.get("productid")
+            or normalized.get("productsku")
+        )
+        name = (
+            normalized.get("name")
+            or normalized.get("prodname")
+            or normalized.get("productname")
+        )
         if not product_id or not name:
             continue
         existing = db.query(Product).filter(
             Product.id == product_id, Product.tenant_id == ctx.tenant.id
         ).first()
         if existing:
-            for field in ("name", "category", "price", "stock", "reorder_point"):
-                if field in row and row[field]:
-                    val = row[field]
-                    if field == "price":
-                        val = float(val)
-                    elif field in ("stock", "reorder_point"):
-                        val = int(val)
-                    setattr(existing, field, val)
+            existing.name = name
+            existing.category = normalized.get("category") or existing.category
+            existing.price = _parse_float(normalized.get("price"), existing.price)
+            existing.stock = _parse_int(normalized.get("stock"), existing.stock)
+            existing.reorder_point = _parse_int(
+                normalized.get("reorderpoint") or normalized.get("reorder_point"),
+                existing.reorder_point,
+            )
+            existing.forecast = _parse_int(normalized.get("forecast"), existing.forecast)
+            existing.last_month = _parse_int(normalized.get("lastmonth") or normalized.get("last_month"), existing.last_month)
+            existing.change = _parse_float(normalized.get("change"), existing.change)
+            existing.accuracy = _parse_float(normalized.get("accuracy"), existing.accuracy)
         else:
             db.add(Product(
                 id=product_id,
                 tenant_id=ctx.tenant.id,
                 name=name,
-                category=row.get("category", "Uncategorized"),
-                price=float(row.get("price", 0)),
-                stock=int(row.get("stock", 0)),
-                reorder_point=int(row.get("reorder_point", 0)),
-                forecast=0,
-                last_month=0,
-                change=0,
-                accuracy=0,
+                category=normalized.get("category") or "Uncategorized",
+                price=_parse_float(normalized.get("price")),
+                stock=_parse_int(normalized.get("stock")),
+                reorder_point=_parse_int(normalized.get("reorderpoint") or normalized.get("reorder_point")),
+                forecast=_parse_int(normalized.get("forecast")),
+                last_month=_parse_int(normalized.get("lastmonth") or normalized.get("last_month")),
+                change=_parse_float(normalized.get("change")),
+                accuracy=_parse_float(normalized.get("accuracy")),
             ))
         count += 1
 
-    job = ProductImportJob(
-        tenant_id=ctx.tenant.id,
-        filename=file.filename,
-        items_count=count,
-        status="completed",
-    )
-    db.add(job)
+    # First commit product rows. Import history logging is best-effort.
     db.commit()
-    db.refresh(job)
 
-    return ProductImportResponse(
-        id=job.id,
-        file=job.filename,
-        date=job.created_at.strftime("%b %d, %Y") if job.created_at else "",
-        items=job.items_count,
-        status=job.status,
-    )
+    try:
+        job = ProductImportJob(
+            tenant_id=ctx.tenant.id,
+            filename=file.filename,
+            items_count=count,
+            status="completed",
+        )
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+        return ProductImportResponse(
+            id=job.id,
+            file=job.filename,
+            date=job.created_at.strftime("%b %d, %Y") if job.created_at else "",
+            items=job.items_count,
+            status=job.status,
+        )
+    except OperationalError:
+        db.rollback()
+        return ProductImportResponse(
+            id=0,
+            file=file.filename,
+            date=datetime.datetime.utcnow().strftime("%b %d, %Y"),
+            items=count,
+            status="completed",
+        )
 
 
 @router.get("/export", response_class=StreamingResponse)
@@ -194,6 +329,85 @@ def export_products(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=products_catalog.csv"},
     )
+
+
+# --- Sales data ---
+
+
+@router.post("/sales/import", response_model=SalesImportResponse, status_code=201)
+async def import_sales(
+    file: UploadFile = File(...),
+    ctx: TenantContext = Depends(require_permission("products.import")),
+    db: Session = Depends(get_db),
+):
+    """Import daily sales data from CSV. Columns: SKU/date/sold quantity (delimiter auto-detected)."""
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only .csv files are accepted")
+
+    contents = await file.read()
+    rows = _parse_csv_rows(contents)
+
+    imported = 0
+    skipped = 0
+
+    for row in rows:
+        normalized = {
+            _normalize_key(str(key)): (value.strip() if isinstance(value, str) else value)
+            for key, value in row.items()
+            if key
+        }
+
+        product_id = (
+            normalized.get("productid")
+            or normalized.get("sku")
+            or normalized.get("productsku")
+        )
+        date_str = normalized.get("date") or normalized.get("day")
+        quantity_str = (
+            normalized.get("quantity")
+            or normalized.get("soldquantity")
+            or normalized.get("sales")
+            or normalized.get("qty")
+        )
+
+        if not product_id or not date_str or not quantity_str:
+            skipped += 1
+            continue
+
+        product = db.query(Product).filter(
+            Product.id == product_id,
+            Product.tenant_id == ctx.tenant.id,
+        ).first()
+        if not product:
+            skipped += 1
+            continue
+
+        try:
+            sale_date = datetime.date.fromisoformat(date_str)
+            quantity = int(float(quantity_str))
+        except (ValueError, TypeError):
+            skipped += 1
+            continue
+
+        existing = db.query(SalesRecord).filter(
+            SalesRecord.tenant_id == ctx.tenant.id,
+            SalesRecord.product_id == product_id,
+            SalesRecord.date == sale_date,
+        ).first()
+
+        if existing:
+            existing.quantity = quantity
+        else:
+            db.add(SalesRecord(
+                tenant_id=ctx.tenant.id,
+                product_id=product_id,
+                date=sale_date,
+                quantity=quantity,
+            ))
+        imported += 1
+
+    db.commit()
+    return SalesImportResponse(imported=imported, skipped=skipped)
 
 
 # --- Single product routes ---
@@ -235,18 +449,31 @@ def get_product(
         text=f"Forecast {sign}{product.change:.0f}% vs last month — model confidence {product.accuracy}%",
         type="success" if product.change >= 0 else "warning",
     ))
+    daily_forecast = product.forecast / 30 if product.forecast else 0
     if product.stock <= product.reorder_point * 1.2:
-        days_left = round((product.stock - product.reorder_point) / (product.forecast / 30))
-        insights.append(AIInsight(
-            text=f"Stock level low — reorder recommended within {max(days_left, 1)} days",
-            type="warning",
-        ))
+        if daily_forecast > 0:
+            days_left = round((product.stock - product.reorder_point) / daily_forecast)
+            insights.append(AIInsight(
+                text=f"Stock level low — reorder recommended within {max(days_left, 1)} days",
+                type="warning",
+            ))
+        else:
+            insights.append(AIInsight(
+                text="Stock level low — no forecast data to estimate reorder timing",
+                type="warning",
+            ))
     else:
-        days_until = round((product.stock - product.reorder_point) / (product.forecast / 30))
-        insights.append(AIInsight(
-            text=f"Stock sufficient — reorder point reached in ~{days_until} days",
-            type="info",
-        ))
+        if daily_forecast > 0:
+            days_until = round((product.stock - product.reorder_point) / daily_forecast)
+            insights.append(AIInsight(
+                text=f"Stock sufficient — reorder point reached in ~{days_until} days",
+                type="info",
+            ))
+        else:
+            insights.append(AIInsight(
+                text="Stock sufficient — no forecast data to estimate reorder timing",
+                type="info",
+            ))
     revenue = product.forecast * product.price
     insights.append(AIInsight(
         text=f"Projected monthly revenue: ${revenue:,.0f}",
@@ -274,21 +501,123 @@ def get_sales_history(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    daily_avg = product.last_month / 30
-    rng = random.Random(hash(product_id))  # deterministic per product
-    data: list[SalesHistoryPoint] = []
-    for i in range(days - 1, -1, -1):
-        dt = datetime.date.today() - datetime.timedelta(days=i)
-        day_of_week = dt.weekday()
-        weekend_boost = 1.35 if day_of_week >= 5 else 1.0
-        noise = (rng.random() - 0.5) * daily_avg * 0.4
-        trend = ((days - i) / days) * daily_avg * 0.1
-        sales = max(0, round((daily_avg + noise + trend) * weekend_boost))
-        data.append(SalesHistoryPoint(
-            date=f"{dt.month}/{dt.day}",
-            sales=sales,
+    cutoff = datetime.date.today() - datetime.timedelta(days=days)
+    records = (
+        db.query(SalesRecord)
+        .filter(
+            SalesRecord.tenant_id == ctx.tenant.id,
+            SalesRecord.product_id == product_id,
+            SalesRecord.date >= cutoff,
+        )
+        .order_by(SalesRecord.date.asc())
+        .all()
+    )
+
+    return [
+        SalesHistoryPoint(
+            date=f"{r.date.month}/{r.date.day}",
+            sales=r.quantity,
+        )
+        for r in records
+    ]
+
+
+@router.post("/{product_id}/sales", response_model=SalesHistoryPoint, status_code=201)
+def create_sales_record(
+    product_id: str,
+    body: SalesRecordCreate,
+    ctx: TenantContext = Depends(require_permission("products.edit")),
+    db: Session = Depends(get_db),
+):
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.tenant_id == ctx.tenant.id,
+    ).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    try:
+        sale_date = datetime.date.fromisoformat(body.date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+    existing = db.query(SalesRecord).filter(
+        SalesRecord.tenant_id == ctx.tenant.id,
+        SalesRecord.product_id == product_id,
+        SalesRecord.date == sale_date,
+    ).first()
+
+    if existing:
+        existing.quantity = body.quantity
+    else:
+        db.add(SalesRecord(
+            tenant_id=ctx.tenant.id,
+            product_id=product_id,
+            date=sale_date,
+            quantity=body.quantity,
         ))
-    return data
+
+    db.commit()
+    return SalesHistoryPoint(
+        date=f"{sale_date.month}/{sale_date.day}",
+        sales=body.quantity,
+    )
+
+
+@router.post("/{product_id}/sales/import", response_model=SalesImportResponse, status_code=201)
+async def import_sales_for_product(
+    product_id: str,
+    file: UploadFile = File(...),
+    ctx: TenantContext = Depends(require_permission("products.edit")),
+    db: Session = Depends(get_db),
+):
+    if not file.filename or not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only .csv files are accepted")
+
+    product = db.query(Product).filter(
+        Product.id == product_id,
+        Product.tenant_id == ctx.tenant.id,
+    ).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    contents = await file.read()
+    parsed_rows = _iter_sales_csv_rows(contents)
+
+    imported = 0
+    skipped = 0
+
+    for row_pid, date_str, quantity_str in parsed_rows:
+        if row_pid and row_pid != product_id:
+            skipped += 1
+            continue
+
+        try:
+            sale_date = datetime.date.fromisoformat(date_str)
+            quantity = int(float(quantity_str))
+        except (TypeError, ValueError):
+            skipped += 1
+            continue
+
+        existing = db.query(SalesRecord).filter(
+            SalesRecord.tenant_id == ctx.tenant.id,
+            SalesRecord.product_id == product_id,
+            SalesRecord.date == sale_date,
+        ).first()
+
+        if existing:
+            existing.quantity = quantity
+        else:
+            db.add(SalesRecord(
+                tenant_id=ctx.tenant.id,
+                product_id=product_id,
+                date=sale_date,
+                quantity=quantity,
+            ))
+        imported += 1
+
+    db.commit()
+    return SalesImportResponse(imported=imported, skipped=skipped)
 
 
 @router.patch("/{product_id}", response_model=ProductSchema)

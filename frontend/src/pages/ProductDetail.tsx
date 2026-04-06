@@ -1,10 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowUp, ArrowDown, TrendingUp, Package, DollarSign, Target, AlertTriangle, Play, Clock, History } from "lucide-react";
+import { ArrowLeft, ArrowUp, ArrowDown, TrendingUp, Package, DollarSign, Target, AlertTriangle, Play, Clock, History, Upload } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import PageLayout from "@/components/PageLayout";
-import { useProduct, useProductSalesHistory, useForecastRuns, useCreateForecastRun, useDeleteProduct } from "@/hooks/useApi";
+import { useProduct, useProductSalesHistory, useForecastRuns, useCreateForecastRun, useDeleteProduct, useImportProductSalesCsv } from "@/hooks/useApi";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -14,6 +14,8 @@ const ProductDetail = () => {
   const { data: forecastHistory = [] } = useForecastRuns(id);
   const createRun = useCreateForecastRun();
   const deleteProduct = useDeleteProduct();
+  const importProductSales = useImportProductSalesCsv();
+  const salesFileRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "sales" | "forecasts">("overview");
 
   const product = apiDetail?.product;
@@ -61,6 +63,13 @@ const ProductDetail = () => {
     deleteProduct.mutate(product.id, {
       onSuccess: () => navigate("/products"),
     });
+  };
+
+  const handleProductSalesFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !product) return;
+    importProductSales.mutate({ productId: product.id, file });
+    e.target.value = "";
   };
 
   return (
@@ -196,9 +205,22 @@ const ProductDetail = () => {
       {activeTab === "sales" && (
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card border border-border rounded-xl p-5">
-          <div className="flex items-center gap-2 mb-5">
-            <History className="w-4 h-4 text-primary" />
-            <span className="text-[13px] font-medium text-foreground">Daily Sales — Last 90 Days</span>
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-primary" />
+              <span className="text-[13px] font-medium text-foreground">Daily Sales — Last 90 Days</span>
+            </div>
+            <>
+              <input ref={salesFileRef} type="file" accept=".csv" className="hidden" onChange={handleProductSalesFileChange} />
+              <button
+                onClick={() => salesFileRef.current?.click()}
+                disabled={importProductSales.isPending}
+                title="Import rows like sku|yyyy-mm-dd|quantity"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] border border-primary/30 bg-primary/10 text-primary font-medium hover:bg-primary/15 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Upload className="w-3.5 h-3.5" /> {importProductSales.isPending ? "Importing..." : "Import Sales CSV"}
+              </button>
+            </>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={salesHistory} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
@@ -216,13 +238,44 @@ const ProductDetail = () => {
             </AreaChart>
           </ResponsiveContainer>
 
+          {/* Sales rows table */}
+          <div className="mt-6 border border-border rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-border bg-secondary/40 text-[12px] font-medium text-foreground">
+              Sales History Rows
+            </div>
+            {salesHistory.length === 0 ? (
+              <div className="px-4 py-8 text-center text-[12px] text-muted-foreground">
+                No sales records yet for this product.
+              </div>
+            ) : (
+              <div className="max-h-64 overflow-auto">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/20">
+                      <th className="text-left px-4 py-2 font-medium text-muted-foreground">Date</th>
+                      <th className="text-right px-4 py-2 font-medium text-muted-foreground">Sold Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...salesHistory].reverse().map((row, idx) => (
+                      <tr key={`${row.date}-${idx}`} className="border-b border-border/50 last:border-b-0">
+                        <td className="px-4 py-2 text-foreground">{row.date}</td>
+                        <td className="px-4 py-2 text-right font-mono-data text-foreground">{row.sales}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
           {/* Sales summary table */}
           <div className="mt-5 grid grid-cols-4 gap-3">
             {[
               { label: "Total (90d)", value: salesHistory.reduce((s, d) => s + d.sales, 0).toLocaleString() },
-              { label: "Daily Average", value: Math.round(salesHistory.reduce((s, d) => s + d.sales, 0) / 90).toLocaleString() },
-              { label: "Peak Day", value: Math.max(...salesHistory.map(d => d.sales)).toLocaleString() },
-              { label: "Low Day", value: Math.min(...salesHistory.map(d => d.sales)).toLocaleString() },
+              { label: "Daily Average", value: Math.round((salesHistory.reduce((s, d) => s + d.sales, 0) / Math.max(salesHistory.length, 1))).toLocaleString() },
+              { label: "Peak Day", value: (salesHistory.length ? Math.max(...salesHistory.map(d => d.sales)) : 0).toLocaleString() },
+              { label: "Low Day", value: (salesHistory.length ? Math.min(...salesHistory.map(d => d.sales)) : 0).toLocaleString() },
             ].map(stat => (
               <div key={stat.label} className="text-center">
                 <div className="text-[11px] text-muted-foreground">{stat.label}</div>

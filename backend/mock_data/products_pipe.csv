@@ -1,0 +1,6 @@
+SKU|prod name|category|price|stock|reorder point|forecast|last month|change|accuracy
+P001|Protein Bars 12-Pack|Snacks|9.99|180|60|420|390|7.7|96.2
+P002|Sparkling Water Lemon 500ml|Beverages|1.49|520|180|980|910|7.7|95.1
+P003|Organic Oats 1kg|Groceries|4.79|260|90|510|480|6.3|94.4
+P004|Greek Yogurt 150g|Dairy|0.99|340|140|760|720|5.6|93.9
+P005|Arabica Coffee Beans 500g|Beverages|12.5|120|45|260|250|4.0|96.8

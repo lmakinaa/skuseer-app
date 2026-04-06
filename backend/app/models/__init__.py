@@ -14,3 +14,4 @@ from .activity import ActivityLog
 from .pipeline import PipelineJob
 from .forecast_run import ForecastRun, ForecastRunResult
 from .product_import import ProductImportJob
+from .sales import SalesRecord

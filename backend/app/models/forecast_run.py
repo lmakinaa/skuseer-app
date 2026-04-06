@@ -18,6 +18,7 @@ class ForecastRun(Base):
     accuracy = Column(Float, nullable=True)
     duration = Column(String, nullable=True)
     summary = Column(Text, nullable=True)
+    forecast_points_json = Column(Text, nullable=True)
     launched_at = Column(DateTime, nullable=False, server_default=func.now())
     finished_at = Column(DateTime, nullable=True)
 

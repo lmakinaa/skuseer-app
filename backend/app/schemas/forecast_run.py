@@ -23,6 +23,12 @@ class ForecastRunResultItem(BaseModel):
     status: str   # good|review
 
 
+class ForecastPointItem(BaseModel):
+    sku: str
+    date: str
+    quantity: float
+
+
 class ForecastRunDetail(BaseModel):
     id: str
     name: str
@@ -36,6 +42,7 @@ class ForecastRunDetail(BaseModel):
     products: str                      # scope label, e.g. "All Products", "Dairy"
     summary: str
     results: list[ForecastRunResultItem]
+    forecast_points: list[ForecastPointItem] = []
 
 
 class ForecastRunCreate(BaseModel):

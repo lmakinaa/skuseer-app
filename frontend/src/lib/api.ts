@@ -466,6 +466,21 @@ export const addSalesRecord = (productId: string, body: { date: string; quantity
     body: JSON.stringify(body),
   });
 
+export const importProductSalesCsv = async (productId: string, file: File): Promise<SalesImportResponse> => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE_URL}/api/products/${productId}/sales/import`, {
+    method: "POST",
+    body: form,
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`${res.status} ${res.statusText}: ${text}`);
+  }
+  return camelizeKeys(await res.json()) as SalesImportResponse;
+};
+
 // Categories
 export const getCategories = () => request<Category[]>("/api/categories");
 
@@ -508,6 +523,12 @@ export interface ForecastRunResultItem {
   status: string;
 }
 
+export interface ForecastPointItem {
+  sku: string;
+  date: string;
+  quantity: number;
+}
+
 export interface ForecastRunDetail {
   id: string;
   name: string;
@@ -521,6 +542,7 @@ export interface ForecastRunDetail {
   products: string;
   summary: string;
   results: ForecastRunResultItem[];
+  forecastPoints: ForecastPointItem[];
 }
 
 export const getForecastRuns = (productId?: string, includeArchived = false) => {

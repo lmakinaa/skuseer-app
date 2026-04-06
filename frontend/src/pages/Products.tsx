@@ -97,6 +97,13 @@ const Products = () => {
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border transition-colors ${selectionMode ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-muted-foreground hover:text-foreground"}`}>
             <CheckSquare className="w-3.5 h-3.5" /> Select
           </button>
+          <input ref={salesFileRef} type="file" accept=".csv" className="hidden" onChange={handleSalesFileChange} />
+          <button onClick={() => salesFileRef.current?.click()}
+            disabled={importSales.isPending}
+            title="Import CSV with product_id,date,quantity"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-primary/30 bg-primary/10 text-primary font-medium hover:bg-primary/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <Upload className="w-3.5 h-3.5" /> {importSales.isPending ? "Importing..." : "Import Sales"}
+          </button>
           {selectionMode && selectedIds.size > 0 && (
             <button onClick={handleBulkDelete}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors">
@@ -112,12 +119,6 @@ const Products = () => {
           <button onClick={() => handleRunForecast("all")}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
             <Play className="w-3.5 h-3.5" /> Forecast All
-          </button>
-          <input ref={salesFileRef} type="file" accept=".csv" className="hidden" onChange={handleSalesFileChange} />
-          <button onClick={() => salesFileRef.current?.click()}
-            disabled={importSales.isPending}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50">
-            <Upload className="w-3.5 h-3.5" /> {importSales.isPending ? "Importing..." : "Import Sales Data"}
           </button>
           <button onClick={() => setShowAddDialog(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[12px] bg-primary text-primary-foreground font-medium hover:bg-primary/90">

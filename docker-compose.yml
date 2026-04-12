@@ -11,6 +11,112 @@ services:
       - ./keycloak/stockseer-realm.json:/opt/keycloak/data/import/stockseer-realm.json:ro
       - ./keycloak/themes:/opt/keycloak/themes:ro
       - keycloak_data:/opt/keycloak/data
+    networks:
+      - stockseer
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo done"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+      - ./backend/seed.py:/app/seed.py
+      - ./backend/entrypoint.sh:/app/entrypoint.sh:ro
+      - backend_data:/app/data
+    environment:
+      # DB file lives inside the backend_data named volume so it persists across
+      # container rebuilds and `docker compose down`.
+      DATABASE_URL: sqlite:////app/data/stockseer.db
+      # KEYCLOAK_URL: used for backend->keycloak JWKS fetch (docker network DNS)
+      KEYCLOAK_URL: http://keycloak:8080
+      # KEYCLOAK_ISSUER_URL: used to validate the `iss` claim in tokens.
+      # MUST match what the browser used to obtain the token (host-mapped URL).
+      KEYCLOAK_ISSUER_URL: http://localhost:8180
+      KEYCLOAK_REALM: stockseer
+      KEYCLOAK_CLIENT_ID: stockseer-frontend
+      SEER_ENGINE_URL: http://seer-engine:8001
+    networks:
+      - stockseer
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 10s
+      retries: 6
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      seer-engine:
+        condition: service_healthy
+
+  seer-engine:
+    build:
+      context: ./seer-engine
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./seer-engine/core:/app/core
+      - ./seer-engine/data:/app/data
+      - ./seer-engine/models:/app/models
+      - ./seer-engine/tools:/app/tools
+      - ./seer-engine/config.py:/app/config.py
+      - ./seer-engine/main.py:/app/main.py
+    networks:
+      - stockseer
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tailwind.config.ts:/app/tailwind.config.ts
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
+      - ./frontend/components.json:/app/components.json
+    environment:
+      # NOTE: VITE_* vars are inlined into the JS bundle that runs in the USER'S BROWSER.
+      # They must be host-reachable URLs, NOT docker service names.
+      # Docker DNS (e.g. "backend", "keycloak") is only resolvable inside the container network.
+      VITE_API_URL: http://localhost:8000
+      VITE_KEYCLOAK_URL: http://localhost:8180
+      VITE_KEYCLOAK_REALM: stockseer
+      VITE_KEYCLOAK_CLIENT_ID: stockseer-frontend
+    networks:
+      - stockseer
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo done"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    depends_on:
+      backend:
+        condition: service_healthy
+
+networks:
+  stockseer:
+    driver: bridge
 
 volumes:
   keycloak_data:
+  backend_data:

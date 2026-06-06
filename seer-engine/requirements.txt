@@ -1,0 +1,15 @@
+pandas
+numpy
+statsmodels
+window_ops
+plotly
+requests
+statsforecast
+mlforecast
+xgboost
+prophet
+lightgbm
+neuralforecast
+fastapi
+uvicorn
+python-multipart

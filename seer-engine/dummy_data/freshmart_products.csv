@@ -1,0 +1,5 @@
+sku,name,category,price,stock,reorder_point,forecast,last_month,change,accuracy
+DAI-101,Whole Milk 1gal,Dairy,4.29,7074,2947,37234,35498,4.9,96.5
+MEA-101,Chicken Breast 1lb,Meat,5.99,7069,2946,37162,35153,5.7,96.5
+PRO-101,Bananas 1lb,Produce,0.59,7164,2985,38142,35479,7.5,96.5
+BAK-101,White Bread Loaf,Bakery,2.99,7077,2949,36835,35530,3.7,96.5

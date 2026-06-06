@@ -1,0 +1,356 @@
+2026-04-07 15:52:35 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 15:52:35 | INFO    | Loading input date from: dummy_data/multi_product_sales_massive.csv
+2026-04-07 15:52:35 | INFO    | Dataset parsed: 18260 historical rows across 10 SKUs.
+2026-04-07 15:52:35 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 15:52:38 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 15:52:39 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 15:52:39 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 15:52:39 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA', 'Prophet', 'LightGBM', 'XGBoost', 'TFT']
+2026-04-07 15:52:39 | INFO    | Testing model: SNaive...
+2026-04-07 15:52:39 | INFO    | Score for SNaive: 6.31% SMAPE
+2026-04-07 15:52:39 | INFO    | Testing model: Croston...
+2026-04-07 15:52:40 | INFO    | Score for Croston: 10.41% SMAPE
+2026-04-07 15:52:40 | INFO    | Testing model: AutoARIMA...
+2026-04-07 15:53:26 | INFO    | Score for AutoARIMA: 5.59% SMAPE
+2026-04-07 15:53:26 | INFO    | Testing model: Prophet...
+2026-04-07 15:53:26 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 15:53:26 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:27 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:27 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:28 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:28 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:29 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:29 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:30 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:31 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:31 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:53:31 | INFO    | Score for Prophet: 3.47% SMAPE
+2026-04-07 15:53:31 | INFO    | Testing model: LightGBM...
+2026-04-07 15:53:36 | INFO    | Score for LightGBM: 4.24% SMAPE
+2026-04-07 15:53:36 | INFO    | Testing model: XGBoost...
+2026-04-07 15:53:36 | INFO    | XGBoost adding features: ['temperature', 'precipitation', 'wind_speed', 'is_holiday']
+2026-04-07 15:53:36 | INFO    | Score for XGBoost: 4.66% SMAPE
+2026-04-07 15:53:36 | INFO    | Testing model: TFT...
+2026-04-07 15:55:50 | INFO    | Score for TFT: 4.16% SMAPE
+2026-04-07 15:55:50 | INFO    | Tournament ended. Wineer: Prophet
+2026-04-07 15:55:50 | INFO    | Starting final production run using: ['Prophet']
+2026-04-07 15:55:50 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 15:55:50 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:51 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:52 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:52 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:53 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:53 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:54 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:54 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:55 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:55 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 15:55:56 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 19:08:27 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 19:08:27 | INFO    | Loading input date from: dummy_data/multi_product_sales_massive.csv
+2026-04-07 19:08:27 | INFO    | Dataset parsed: 18260 historical rows across 10 SKUs.
+2026-04-07 19:08:27 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 19:08:31 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 19:08:31 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 19:08:31 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 19:08:31 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA', 'Prophet', 'LightGBM', 'XGBoost', 'TFT']
+2026-04-07 19:08:31 | INFO    | Testing model: SNaive...
+2026-04-07 19:08:31 | INFO    | Score for SNaive: 6.31% SMAPE
+2026-04-07 19:08:31 | INFO    | Testing model: Croston...
+2026-04-07 19:08:34 | INFO    | Score for Croston: 10.41% SMAPE
+2026-04-07 19:08:34 | INFO    | Testing model: AutoARIMA...
+2026-04-07 19:09:17 | INFO    | Score for AutoARIMA: 5.59% SMAPE
+2026-04-07 19:09:17 | INFO    | Testing model: Prophet...
+2026-04-07 19:09:17 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 19:09:17 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:18 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:19 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:19 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:20 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:20 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:21 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:21 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:22 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:22 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:09:23 | INFO    | Score for Prophet: 3.47% SMAPE
+2026-04-07 19:09:23 | INFO    | Testing model: LightGBM...
+2026-04-07 19:09:27 | INFO    | Score for LightGBM: 4.24% SMAPE
+2026-04-07 19:09:27 | INFO    | Testing model: XGBoost...
+2026-04-07 19:09:27 | INFO    | XGBoost adding features: ['temperature', 'precipitation', 'wind_speed', 'is_holiday']
+2026-04-07 19:09:28 | INFO    | Score for XGBoost: 4.66% SMAPE
+2026-04-07 19:09:28 | INFO    | Testing model: TFT...
+2026-04-07 19:11:27 | INFO    | Score for TFT: 4.23% SMAPE
+2026-04-07 19:11:27 | INFO    | Tournament ended. Wineer: Prophet
+2026-04-07 19:11:27 | INFO    | Starting final production run using: ['Prophet']
+2026-04-07 19:11:27 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 19:11:28 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:28 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:29 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:29 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:30 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:30 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:31 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:32 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:32 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:33 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 19:11:33 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 20:16:03 | ERROR   | Importing plotly failed. Interactive plots will not work.
+2026-04-07 20:16:54 | ERROR   | Importing plotly failed. Interactive plots will not work.
+2026-04-07 20:16:57 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 20:16:57 | INFO    | Loading input date from: dummy_data/multi_product_sales.csv
+2026-04-07 20:16:57 | INFO    | Dataset parsed: 360 historical rows across 4 SKUs.
+2026-04-07 20:16:57 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 20:17:01 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 20:17:01 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 20:21:12 | ERROR   | Importing plotly failed. Interactive plots will not work.
+2026-04-07 20:21:14 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 20:21:14 | INFO    | Loading input date from: dummy_data/multi_product_sales.csv
+2026-04-07 20:21:14 | INFO    | Dataset parsed: 360 historical rows across 4 SKUs.
+2026-04-07 20:21:14 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 20:21:18 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 20:21:18 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 20:21:18 | CRITICAL | Pipeline failed with error: 'NoneType' object is not subscriptable
+2026-04-07 20:25:21 | ERROR   | Importing plotly failed. Interactive plots will not work.
+2026-04-07 20:25:24 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 20:25:24 | INFO    | Loading input date from: dummy_data/multi_product_sales.csv
+2026-04-07 20:25:24 | INFO    | Dataset parsed: 360 historical rows across 4 SKUs.
+2026-04-07 20:25:24 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 20:25:27 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 20:25:27 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 20:25:27 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 20:25:27 | INFO    | FILTER: Dataset too smal for Deep Learning. Dropping TFT.
+2026-04-07 20:25:27 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA', 'Prophet', 'LightGBM', 'XGBoost']
+2026-04-07 20:25:27 | INFO    | Testing model: SNaive...
+2026-04-07 20:25:27 | INFO    | Score for SNaive: 9.54% SMAPE
+2026-04-07 20:25:27 | INFO    | Testing model: Croston...
+2026-04-07 20:25:29 | INFO    | Score for Croston: 6.59% SMAPE
+2026-04-07 20:25:29 | INFO    | Testing model: AutoARIMA...
+2026-04-07 20:25:30 | INFO    | Score for AutoARIMA: 7.06% SMAPE
+2026-04-07 20:25:30 | INFO    | Testing model: Prophet...
+2026-04-07 20:25:30 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 20:25:31 | INFO    | Disabling yearly seasonality. Run prophet with yearly_seasonality=True to override this.
+2026-04-07 20:25:31 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 20:25:31 | INFO    | Disabling yearly seasonality. Run prophet with yearly_seasonality=True to override this.
+2026-04-07 20:25:31 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 20:25:31 | INFO    | Disabling yearly seasonality. Run prophet with yearly_seasonality=True to override this.
+2026-04-07 20:25:31 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 20:25:32 | INFO    | Disabling yearly seasonality. Run prophet with yearly_seasonality=True to override this.
+2026-04-07 20:25:32 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 20:25:32 | INFO    | Score for Prophet: 6.84% SMAPE
+2026-04-07 20:25:32 | INFO    | Testing model: LightGBM...
+2026-04-07 20:25:36 | INFO    | Score for LightGBM: 8.73% SMAPE
+2026-04-07 20:25:36 | INFO    | Testing model: XGBoost...
+2026-04-07 20:25:36 | INFO    | XGBoost adding features: ['temperature', 'precipitation', 'wind_speed', 'is_holiday']
+2026-04-07 20:25:36 | INFO    | Score for XGBoost: 8.11% SMAPE
+2026-04-07 20:25:36 | INFO    | Tournament ended. Champion selected by it's complexity tier: Croston
+2026-04-07 20:25:36 | INFO    | Starting final production run using: ['Croston']
+2026-04-07 20:25:37 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 20:33:58 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 20:33:58 | INFO    | Loading input date from: dummy_data/multi_product_sales.csv
+2026-04-07 20:33:58 | INFO    | Dataset parsed: 360 historical rows across 4 SKUs.
+2026-04-07 20:33:58 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 20:34:01 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 20:34:01 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 20:34:01 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 20:34:01 | INFO    | FILTER: Dataset too smal for Deep Learning. Dropping TFT.
+2026-04-07 20:34:01 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA', 'Prophet', 'LightGBM', 'XGBoost']
+2026-04-07 20:34:01 | INFO    | Testing model: SNaive...
+2026-04-07 20:34:02 | INFO    | Score for SNaive: 9.54% SMAPE
+2026-04-07 20:34:02 | INFO    | Testing model: Croston...
+2026-04-07 20:34:03 | INFO    | Score for Croston: 6.59% SMAPE
+2026-04-07 20:34:03 | INFO    | Testing model: AutoARIMA...
+2026-04-07 20:34:05 | INFO    | Score for AutoARIMA: 7.06% SMAPE
+2026-04-07 20:34:05 | INFO    | Testing model: Prophet...
+2026-04-07 20:34:05 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 20:34:05 | INFO    | Disabling yearly seasonality. Run prophet with yearly_seasonality=True to override this.
+2026-04-07 20:34:05 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 20:34:06 | INFO    | Disabling yearly seasonality. Run prophet with yearly_seasonality=True to override this.
+2026-04-07 20:34:06 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 20:34:06 | INFO    | Disabling yearly seasonality. Run prophet with yearly_seasonality=True to override this.
+2026-04-07 20:34:06 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 20:34:06 | INFO    | Disabling yearly seasonality. Run prophet with yearly_seasonality=True to override this.
+2026-04-07 20:34:06 | INFO    | Disabling daily seasonality. Run prophet with daily_seasonality=True to override this.
+2026-04-07 20:34:07 | INFO    | Score for Prophet: 6.84% SMAPE
+2026-04-07 20:34:07 | INFO    | Testing model: LightGBM...
+2026-04-07 20:34:11 | INFO    | Score for LightGBM: 8.73% SMAPE
+2026-04-07 20:34:11 | INFO    | Testing model: XGBoost...
+2026-04-07 20:34:11 | INFO    | XGBoost adding features: ['temperature', 'precipitation', 'wind_speed', 'is_holiday']
+2026-04-07 20:34:11 | INFO    | Score for XGBoost: 8.11% SMAPE
+2026-04-07 20:34:11 | INFO    | Tournament ended. Champion selected by it's complexity tier: Croston
+2026-04-07 20:34:11 | INFO    | Starting final production run using: ['Croston']
+2026-04-07 20:34:12 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 20:38:19 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 20:38:19 | INFO    | Loading input date from: dummy_data/multi_product_sales.csv
+2026-04-07 20:38:19 | INFO    | Dataset parsed: 360 historical rows across 4 SKUs.
+2026-04-07 20:38:19 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 20:38:23 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 20:38:23 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 20:38:23 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 20:38:23 | INFO    | FILTER: Dataset too smal for Deep Learning. Dropping TFT.
+2026-04-07 20:38:23 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA', 'Prophet', 'LightGBM', 'XGBoost']
+2026-04-07 20:38:23 | INFO    | Testing model: SNaive...
+2026-04-07 20:38:23 | INFO    | Score for SNaive: 9.54% SMAPE
+2026-04-07 20:38:23 | INFO    | Testing model: Croston...
+2026-04-07 20:38:24 | INFO    | Score for Croston: 6.59% SMAPE
+2026-04-07 20:38:24 | INFO    | Testing model: AutoARIMA...
+2026-04-07 20:38:26 | INFO    | Score for AutoARIMA: 7.06% SMAPE
+2026-04-07 20:38:26 | INFO    | Testing model: Prophet...
+2026-04-07 20:38:26 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 20:38:27 | INFO    | Score for Prophet: 6.84% SMAPE
+2026-04-07 20:38:27 | INFO    | Testing model: LightGBM...
+2026-04-07 20:38:32 | INFO    | Score for LightGBM: 8.73% SMAPE
+2026-04-07 20:38:32 | INFO    | Testing model: XGBoost...
+2026-04-07 20:38:32 | INFO    | XGBoost adding features: ['temperature', 'precipitation', 'wind_speed', 'is_holiday']
+2026-04-07 20:38:32 | INFO    | Score for XGBoost: 8.11% SMAPE
+2026-04-07 20:38:32 | INFO    | Tournament ended. Champion selected by it's complexity tier: Croston
+2026-04-07 20:38:32 | INFO    | Starting final production run using: ['Croston']
+2026-04-07 20:38:33 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 21:01:33 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 21:01:33 | INFO    | Loading input date from: dummy_data/multi_product_sales
+2026-04-07 21:01:33 | CRITICAL | Pipeline failed with error: [Errno 2] No such file or directory: 'dummy_data/multi_product_sales'
+2026-04-07 21:01:46 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 21:01:46 | INFO    | Loading input date from: dummy_data/multi_product_sales.csv
+2026-04-07 21:01:46 | INFO    | Dataset parsed: 360 historical rows across 4 SKUs.
+2026-04-07 21:01:46 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 21:01:50 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 21:01:50 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 21:01:50 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 21:01:50 | INFO    | FILTER: Dataset too smal for Deep Learning. Dropping TFT.
+2026-04-07 21:01:50 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA', 'Prophet', 'LightGBM', 'XGBoost']
+2026-04-07 21:01:50 | INFO    | Testing model: SNaive...
+2026-04-07 21:01:50 | ERROR   | Model SNaive crashed: _run_SNaive() takes 2 positional arguments but 3 were given
+2026-04-07 21:01:50 | INFO    | Testing model: Croston...
+2026-04-07 21:01:50 | ERROR   | Model Croston crashed: _run_Croston() takes 2 positional arguments but 3 were given
+2026-04-07 21:01:50 | INFO    | Testing model: AutoARIMA...
+2026-04-07 21:01:50 | ERROR   | Model AutoARIMA crashed: _run_AutoARIMA() takes 2 positional arguments but 3 were given
+2026-04-07 21:01:50 | INFO    | Testing model: Prophet...
+2026-04-07 21:01:50 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 21:01:51 | INFO    | Score for Prophet: 6.84% SMAPE
+2026-04-07 21:01:51 | INFO    | Testing model: LightGBM...
+2026-04-07 21:01:51 | ERROR   | Model LightGBM crashed: _run_LightGBM() takes 2 positional arguments but 3 were given
+2026-04-07 21:01:51 | INFO    | Testing model: XGBoost...
+2026-04-07 21:01:51 | ERROR   | Model XGBoost crashed: _run_XGBoost() takes 2 positional arguments but 3 were given
+2026-04-07 21:01:51 | INFO    | Tournament ended. Wineer: Prophet
+2026-04-07 21:01:51 | INFO    | Starting final production run using: ['Prophet']
+2026-04-07 21:01:51 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 21:01:53 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 21:03:16 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 21:03:16 | INFO    | Loading input date from: dummy_data/multi_product_sales.csv
+2026-04-07 21:03:16 | INFO    | Dataset parsed: 360 historical rows across 4 SKUs.
+2026-04-07 21:03:16 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 21:03:20 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 21:03:20 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 21:03:20 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 21:03:20 | INFO    | FILTER: Dataset too smal for Deep Learning. Dropping TFT.
+2026-04-07 21:03:20 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA', 'Prophet', 'LightGBM', 'XGBoost']
+2026-04-07 21:03:20 | INFO    | Testing model: SNaive...
+2026-04-07 21:03:20 | INFO    | Score for SNaive: 9.54% SMAPE
+2026-04-07 21:03:20 | INFO    | Testing model: Croston...
+2026-04-07 21:03:21 | INFO    | Score for Croston: 6.59% SMAPE
+2026-04-07 21:03:21 | INFO    | Testing model: AutoARIMA...
+2026-04-07 21:03:23 | INFO    | Score for AutoARIMA: 7.06% SMAPE
+2026-04-07 21:03:23 | INFO    | Testing model: Prophet...
+2026-04-07 21:03:23 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 21:03:24 | INFO    | Score for Prophet: 6.84% SMAPE
+2026-04-07 21:03:24 | INFO    | Testing model: LightGBM...
+2026-04-07 21:03:29 | INFO    | Score for LightGBM: 8.73% SMAPE
+2026-04-07 21:03:29 | INFO    | Testing model: XGBoost...
+2026-04-07 21:03:29 | INFO    | XGBoost adding features: ['temperature', 'precipitation', 'wind_speed', 'is_holiday']
+2026-04-07 21:03:29 | INFO    | Score for XGBoost: 8.11% SMAPE
+2026-04-07 21:03:29 | INFO    | Tournament ended. Champion selected by it's complexity tier: Croston
+2026-04-07 21:03:29 | INFO    | Starting final production run using: ['Croston']
+2026-04-07 21:03:30 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 22:55:09 | INFO    | forecast request: products=1 rows=9 horizon=15 tools=['weather', 'holidays']
+2026-04-07 22:55:09 | INFO    | forecast completed (mock): products=1 points=9
+2026-04-07 23:05:05 | INFO    | forecast request: products=1 rows=9 horizon=15 tools=['weather', 'holidays']
+2026-04-07 23:05:05 | ERROR   | forecast failed: 'ForecastRequest' object has no attribute 'longtitude'
+2026-04-07 23:06:07 | INFO    | forecast request: products=1 rows=9 horizon=15 tools=['weather', 'holidays']
+2026-04-07 23:06:07 | ERROR   | forecast failed: _run_forecasting_engine() got an unexpected keyword argument 'forecast_point'
+2026-04-07 23:07:33 | INFO    | forecast request: products=1 rows=9 horizon=15 tools=['weather', 'holidays']
+2026-04-07 23:07:33 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 23:07:33 | INFO    | Loading input date from..
+2026-04-07 23:07:33 | CRITICAL | Pipeline failed with error: error: need these columns: {'date', 'product_id', 'sales'}
+2026-04-07 23:08:49 | INFO    | forecast request: products=1 rows=9 horizon=15 tools=['weather', 'holidays']
+2026-04-07 23:08:49 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 23:08:49 | INFO    | Loading input date from..
+2026-04-07 23:08:49 | CRITICAL | Pipeline failed with error: error: need these columns: {'sales', 'date', 'product_id'}
+2026-04-07 23:17:40 | INFO    | forecast request: products=1 rows=9 horizon=15 tools=['weather', 'holidays']
+2026-04-07 23:17:40 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 23:17:40 | INFO    | Loading input date from..
+2026-04-07 23:17:40 | CRITICAL | Pipeline failed with error: error: need these columns: {'date', 'product_id', 'forecast'}
+2026-04-07 23:19:42 | INFO    | forecast request: products=1 rows=9 horizon=15 tools=['weather', 'holidays']
+2026-04-07 23:19:42 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 23:19:42 | INFO    | Loading input date from..
+2026-04-07 23:19:42 | CRITICAL | Pipeline failed with error: error: need these columns: {'forecast', 'date', 'product_id'}
+2026-04-07 23:20:14 | INFO    | forecast request: products=1 rows=9 horizon=15 tools=['weather', 'holidays']
+2026-04-07 23:20:14 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 23:20:14 | INFO    | Loading input date from..
+2026-04-07 23:20:14 | INFO    | Dataset parsed: 9 historical rows across 1 SKUs.
+2026-04-07 23:20:14 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 23:20:14 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 23:20:15 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 23:20:15 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 23:20:15 | INFO    | FILTER: Dataset too smal for Deep Learning. Dropping TFT.
+2026-04-07 23:20:15 | INFO    | FILTER: History too short for Fourier analysis. Dropping Prophet.
+2026-04-07 23:20:15 | INFO    | FILTER: History too short for tree splits. Dropping XGBoost and LightGBM.
+2026-04-07 23:20:15 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA']
+2026-04-07 23:20:15 | INFO    | Testing model: SNaive...
+2026-04-07 23:20:15 | ERROR   | Model SNaive crashed: number sections must be larger than 0.
+2026-04-07 23:20:15 | INFO    | Testing model: Croston...
+2026-04-07 23:20:15 | ERROR   | Model Croston crashed: number sections must be larger than 0.
+2026-04-07 23:20:15 | INFO    | Testing model: AutoARIMA...
+2026-04-07 23:20:15 | ERROR   | Model AutoARIMA crashed: number sections must be larger than 0.
+2026-04-07 23:20:15 | INFO    | Tournament ended. Champion selected by it's complexity tier: SNaive
+2026-04-07 23:20:15 | INFO    | Starting final production run using: ['SNaive']
+2026-04-07 23:20:15 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 23:20:15 | ERROR   | forecast failed: local variable 'forecast_dateframe' referenced before assignment
+2026-04-07 23:22:27 | INFO    | forecast request: products=1 rows=9 horizon=15 tools=['weather', 'holidays']
+2026-04-07 23:22:27 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 23:22:27 | INFO    | Loading input date from..
+2026-04-07 23:22:27 | INFO    | Dataset parsed: 9 historical rows across 1 SKUs.
+2026-04-07 23:22:27 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 23:22:27 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 23:22:27 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 23:22:27 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 23:22:27 | INFO    | FILTER: Dataset too smal for Deep Learning. Dropping TFT.
+2026-04-07 23:22:27 | INFO    | FILTER: History too short for Fourier analysis. Dropping Prophet.
+2026-04-07 23:22:27 | INFO    | FILTER: History too short for tree splits. Dropping XGBoost and LightGBM.
+2026-04-07 23:22:27 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA']
+2026-04-07 23:22:27 | INFO    | Testing model: SNaive...
+2026-04-07 23:22:27 | ERROR   | Model SNaive crashed: number sections must be larger than 0.
+2026-04-07 23:22:27 | INFO    | Testing model: Croston...
+2026-04-07 23:22:27 | ERROR   | Model Croston crashed: number sections must be larger than 0.
+2026-04-07 23:22:27 | INFO    | Testing model: AutoARIMA...
+2026-04-07 23:22:27 | ERROR   | Model AutoARIMA crashed: number sections must be larger than 0.
+2026-04-07 23:22:27 | INFO    | Tournament ended. Champion selected by it's complexity tier: SNaive
+2026-04-07 23:22:27 | INFO    | Starting final production run using: ['SNaive']
+2026-04-07 23:22:27 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 23:22:27 | INFO    | forecast completed (real): products=1 points=15
+2026-04-07 23:26:51 | INFO    | forecast request: products=4 rows=360 horizon=15 tools=['weather', 'holidays']
+2026-04-07 23:26:51 | INFO    | --- STARTING FORECAST PIPELINE ---
+2026-04-07 23:26:51 | INFO    | Loading input date from..
+2026-04-07 23:26:51 | INFO    | Dataset parsed: 360 historical rows across 4 SKUs.
+2026-04-07 23:26:51 | INFO    | Applying contextual tool: WEATHER
+2026-04-07 23:26:54 | INFO    | Applying contextual tool: HOLIDAYS
+2026-04-07 23:26:55 | INFO    | Initializing Tournament Referee (Horizon: 15 days)
+2026-04-07 23:26:55 | INFO    | Analyzing data for heuristic model pre-filtering...
+2026-04-07 23:26:55 | INFO    | FILTER: Dataset too smal for Deep Learning. Dropping TFT.
+2026-04-07 23:26:55 | INFO    | Surviving models for tournament: ['SNaive', 'Croston', 'AutoARIMA', 'Prophet', 'LightGBM', 'XGBoost']
+2026-04-07 23:26:55 | INFO    | Testing model: SNaive...
+2026-04-07 23:27:31 | INFO    | Score for SNaive: 9.54% SMAPE
+2026-04-07 23:27:31 | INFO    | Testing model: Croston...
+2026-04-07 23:27:53 | INFO    | Score for Croston: 6.59% SMAPE
+2026-04-07 23:27:53 | INFO    | Testing model: AutoARIMA...
+2026-04-07 23:28:08 | INFO    | Score for AutoARIMA: 7.06% SMAPE
+2026-04-07 23:28:08 | INFO    | Testing model: Prophet...
+2026-04-07 23:28:08 | INFO    | Prophet adding regressors: ['temperature', 'precipitation', 'wind_speed']
+2026-04-07 23:28:11 | INFO    | Score for Prophet: 6.84% SMAPE
+2026-04-07 23:28:11 | INFO    | Testing model: LightGBM...
+2026-04-07 23:28:15 | INFO    | Score for LightGBM: 8.73% SMAPE
+2026-04-07 23:28:15 | INFO    | Testing model: XGBoost...
+2026-04-07 23:28:15 | INFO    | XGBoost adding features: ['temperature', 'precipitation', 'wind_speed', 'is_holiday']
+2026-04-07 23:28:16 | INFO    | Score for XGBoost: 8.11% SMAPE
+2026-04-07 23:28:16 | INFO    | Tournament ended. Champion selected by it's complexity tier: Croston
+2026-04-07 23:28:16 | INFO    | Starting final production run using: ['Croston']
+2026-04-07 23:28:30 | INFO    | --- FORECAST PIPELINE COMPLETE SUCCESSFULLY ---
+2026-04-07 23:28:30 | INFO    | forecast completed (real): products=4 points=60

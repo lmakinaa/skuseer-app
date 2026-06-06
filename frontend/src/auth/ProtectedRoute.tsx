@@ -1,8 +1,19 @@
 import { useAuth } from "react-oidc-context";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const auth = useAuth();
+
+  // Kick off the login redirect from an effect, not during render. Calling
+  // signinRedirect() in the render body updates AuthProvider state mid-render
+  // ("Cannot update a component while rendering a different component") and
+  // re-fires on every render.
+  useEffect(() => {
+    if (!auth.isLoading && !auth.error && !auth.isAuthenticated) {
+      void auth.signinRedirect();
+    }
+  }, [auth.isLoading, auth.error, auth.isAuthenticated, auth]);
 
   if (auth.isLoading) {
     return (
@@ -33,7 +44,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (!auth.isAuthenticated) {
-    auth.signinRedirect();
+    // Redirect is triggered by the effect above; just show a spinner meanwhile.
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">

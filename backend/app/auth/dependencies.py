@@ -42,6 +42,15 @@ async def get_current_user(
 
     # JIT provisioning: create user on first login
     user = db.query(User).filter(User.keycloak_sub == sub).first()
+    if user is None and email:
+        # No row for this Keycloak sub yet, but one may already exist for this
+        # email (e.g. a pre-seeded account created with a placeholder sub). Adopt
+        # it by linking the real sub instead of inserting a duplicate — `email` is
+        # UNIQUE, so a blind insert raises IntegrityError (UNIQUE constraint failed).
+        existing = db.query(User).filter(User.email == email).first()
+        if existing is not None:
+            existing.keycloak_sub = sub
+            user = existing
     if user is None:
         # Check if user has platform_admin realm role
         realm_roles = claims.get("realm_access", {}).get("roles", [])

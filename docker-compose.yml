@@ -1,10 +1,19 @@
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
-    command: start-dev --import-realm --spi-theme-cache-themes=false --spi-theme-cache-templates=false
+    command: start-dev --import-realm --spi-theme-cache-themes=false --spi-theme-cache-templates=false --spi-theme-static-max-age=-1
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      # Keycloak is exposed to the browser at https://stock-seer.com/auth via Caddy
+      # (Cloudflare -> Caddy :443 -> this container). It is NOT reachable on :8180
+      # publicly (Cloudflare doesn't proxy that port), so everything is path-routed
+      # under /auth on the single 443 origin.
+      KC_HTTP_RELATIVE_PATH: /auth
+      # Trust X-Forwarded-* from Caddy so issuer/discovery URLs are built as
+      # https://stock-seer.com/auth/... instead of the internal http://...:8080.
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "false"
     ports:
       - "8180:8080"
     volumes:
@@ -13,11 +22,6 @@ services:
       - keycloak_data:/opt/keycloak/data
     networks:
       - stockseer
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo done"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
 
   backend:
     build:
@@ -26,36 +30,25 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/app:/app/app
-      - ./backend/alembic:/app/alembic
-      - ./backend/alembic.ini:/app/alembic.ini
-      - ./backend/seed.py:/app/seed.py
       - ./backend/entrypoint.sh:/app/entrypoint.sh:ro
       - backend_data:/app/data
     environment:
       # DB file lives inside the backend_data named volume so it persists across
       # container rebuilds and `docker compose down`.
       DATABASE_URL: sqlite:////app/data/stockseer.db
-      # KEYCLOAK_URL: used for backend->keycloak JWKS fetch (docker network DNS)
-      KEYCLOAK_URL: http://keycloak:8080
+      # KEYCLOAK_URL: used for backend->keycloak JWKS fetch (docker network DNS).
+      # Includes /auth because KC_HTTP_RELATIVE_PATH=/auth moves every endpoint
+      # under that prefix. JWKS => http://keycloak:8080/auth/realms/stockseer/...
+      KEYCLOAK_URL: http://keycloak:8080/auth
       # KEYCLOAK_ISSUER_URL: used to validate the `iss` claim in tokens.
-      # MUST match what the browser used to obtain the token (host-mapped URL).
-      KEYCLOAK_ISSUER_URL: http://localhost:8180
+      # MUST match what the browser used to obtain the token. Tokens are minted
+      # via https://demo.skuseer.com/auth, so iss = https://demo.skuseer.com/auth/realms/stockseer.
+      KEYCLOAK_ISSUER_URL: https://demo.skuseer.com/auth
       KEYCLOAK_REALM: stockseer
       KEYCLOAK_CLIENT_ID: stockseer-frontend
       SEER_ENGINE_URL: http://seer-engine:8001
     networks:
       - stockseer
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
-      interval: 10s
-      timeout: 10s
-      retries: 6
-    depends_on:
-      keycloak:
-        condition: service_healthy
-      seer-engine:
-        condition: service_healthy
 
   seer-engine:
     build:
@@ -63,55 +56,26 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8001:8001"
-    volumes:
-      - ./seer-engine/core:/app/core
-      - ./seer-engine/data:/app/data
-      - ./seer-engine/models:/app/models
-      - ./seer-engine/tools:/app/tools
-      - ./seer-engine/config.py:/app/config.py
-      - ./seer-engine/main.py:/app/main.py
     networks:
       - stockseer
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8001/health')\""]
-      interval: 10s
-      timeout: 5s
-      retries: 6
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # NOTE: VITE_* vars are inlined into the JS bundle at BUILD time (this is now a
+      # production `vite build`, served as static files by nginx — not the dev server).
+      # They must be browser-reachable URLs routed through Caddy on the 443 origin,
+      # NOT docker service names and NOT the unproxied :8000/:8180 ports.
+      args:
+        VITE_API_URL: https://demo.skuseer.com
+        VITE_KEYCLOAK_URL: https://demo.skuseer.com/auth
+        VITE_KEYCLOAK_REALM: stockseer
+        VITE_KEYCLOAK_CLIENT_ID: stockseer-frontend
     ports:
       - "8080:8080"
-    volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
-      - ./frontend/index.html:/app/index.html
-      - ./frontend/vite.config.ts:/app/vite.config.ts
-      - ./frontend/tailwind.config.ts:/app/tailwind.config.ts
-      - ./frontend/postcss.config.js:/app/postcss.config.js
-      - ./frontend/tsconfig.json:/app/tsconfig.json
-      - ./frontend/tsconfig.app.json:/app/tsconfig.app.json
-      - ./frontend/components.json:/app/components.json
-    environment:
-      # NOTE: VITE_* vars are inlined into the JS bundle that runs in the USER'S BROWSER.
-      # They must be host-reachable URLs, NOT docker service names.
-      # Docker DNS (e.g. "backend", "keycloak") is only resolvable inside the container network.
-      VITE_API_URL: http://localhost:8000
-      VITE_KEYCLOAK_URL: http://localhost:8180
-      VITE_KEYCLOAK_REALM: stockseer
-      VITE_KEYCLOAK_CLIENT_ID: stockseer-frontend
     networks:
       - stockseer
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo done"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-    depends_on:
-      backend:
-        condition: service_healthy
 
 networks:
   stockseer:

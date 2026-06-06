@@ -1,50 +1,134 @@
-/* StockSeer login theme overrides */
+/* StockSeer login theme — matches the app (light, Inter, blue primary).
+   Parent theme is keycloak.v2 → PatternFly v5 markup.
+   IMPORTANT: do NOT override PatternFly's page/container layout (display/grid/
+   width) — that collapses the card. We only set its width via PF's own variable
+   and style the visuals. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-body {
+:root {
+  --ss-bg:        hsl(210 20% 98%);
+  --ss-fg:        hsl(220 20% 14%);
+  --ss-muted:     hsl(220 9% 46%);
+  --ss-card:      #ffffff;
+  --ss-border:    hsl(220 13% 89%);
+  --ss-primary:   hsl(217 72% 50%);
+  --ss-primary-d: hsl(217 72% 44%);
+  --ss-ring:      hsl(217 72% 50% / 0.18);
+}
+
+/* ---- Page background + font (no layout changes) ---- */
+body,
+body.login-pf {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  color: var(--ss-fg);
   background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.16), transparent 28%),
-    linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+    radial-gradient(900px 520px at 50% -8%, hsl(217 72% 50% / 0.10), transparent 60%),
+    var(--ss-bg) !important;
+}
+.login-pf body { background: transparent !important; }
+
+/* Card width via PatternFly's own variable (safe — keeps PF's centering/grid) */
+.pf-v5-c-login__container {
+  --pf-v5-c-login__container--MaxWidth: 27rem;
 }
 
-#kc-header,
+/* ---- Brand wordmark (realm displayName, above the card) ---- */
 #kc-header-wrapper {
-  display: none;
+  color: var(--ss-fg) !important;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-shadow: none;
+  padding: 0;
+}
+#kc-header-wrapper::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 10px;
+  border-radius: 4px;
+  vertical-align: -1px;
+  background: linear-gradient(135deg, var(--ss-primary), hsl(199 89% 52%));
+  box-shadow: 0 4px 10px hsl(217 72% 50% / 0.4);
 }
 
-.login-pf body {
-  background-color: #0f172a;
-}
-
-#kc-login,
-#kc-form-login button[type="submit"],
-#kc-form-login input[type="submit"] {
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
-  border: 0;
-  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.28);
+/* ---- Card ---- */
+.pf-v5-c-login__main {
+  background: var(--ss-card);
+  border: 1px solid var(--ss-border);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(16,24,40,0.04), 0 12px 32px rgba(16,24,40,0.08);
+  padding: 2rem 2.25rem 1.75rem;
 }
 
 #kc-page-title {
-  color: #e2e8f0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ss-fg);
+  margin: 0;
 }
 
-#kc-content {
-  backdrop-filter: blur(18px);
+/* ---- Labels ---- */
+.pf-v5-c-form__label,
+.pf-v5-c-form__label-text {
+  color: var(--ss-fg) !important;
+  font-weight: 500;
+  font-size: 0.875rem;
 }
 
-#kc-form,
-.card-pf {
-  border-radius: 20px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(15, 23, 42, 0.8);
-  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.45);
+/* ---- Inputs: make sure they fill the card width ---- */
+.pf-v5-c-form-control,
+.pf-v5-c-input-group,
+.pf-v5-c-input-group__item:not(.pf-m-plain),
+.pf-v5-c-form-control input {
+  width: 100%;
+}
+.pf-v5-c-form-control {
+  font-size: 0.95rem;
+  color: var(--ss-fg);
+  background: #fff !important;
+  border: 1px solid var(--ss-border) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+.pf-v5-c-form-control input { background: transparent !important; border: 0 !important; }
+.pf-v5-c-form-control:hover { border-color: hsl(220 13% 80%) !important; }
+.pf-v5-c-form-control:focus-within {
+  border-color: var(--ss-primary) !important;
+  box-shadow: 0 0 0 3px var(--ss-ring) !important;
+}
+/* password show/hide toggle button */
+.pf-v5-c-input-group .pf-v5-c-button.pf-m-control {
+  border: 1px solid var(--ss-border);
+  border-radius: 10px;
+  margin-left: 6px;
+  background: #fff;
 }
 
-.kc-social-links {
-  margin-top: 1rem;
+/* ---- Primary button (full-width sign-in) ---- */
+.pf-v5-c-button.pf-m-primary {
+  background: var(--ss-primary) !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
+  box-shadow: 0 8px 20px hsl(217 72% 50% / 0.28);
+  transition: background .15s ease, transform .05s ease, box-shadow .15s ease;
 }
+.pf-v5-c-button.pf-m-primary:hover {
+  background: var(--ss-primary-d) !important;
+  box-shadow: 0 10px 26px hsl(217 72% 50% / 0.35);
+}
+.pf-v5-c-button.pf-m-primary:active { transform: translateY(1px); }
 
-.kc-social-item {
-  border-radius: 12px;
-}
+/* ---- Links ---- */
+a { color: var(--ss-primary); font-weight: 500; text-decoration: none; }
+a:hover { color: var(--ss-primary-d); text-decoration: underline; }
+
+/* ---- Checkbox + alerts + footer ---- */
+.pf-v5-c-check__label { color: var(--ss-muted); font-size: 0.85rem; }
+.pf-v5-c-alert { border-radius: 10px; font-size: 0.875rem; }
+#kc-info, #kc-registration { color: var(--ss-muted); }

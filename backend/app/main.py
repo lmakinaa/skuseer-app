@@ -16,7 +16,7 @@ from app.routers import (
     admin,
 )
 
-app = FastAPI(title="StockSeer API", version="1.0.0")
+app = FastAPI(title="SKUSeer API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,

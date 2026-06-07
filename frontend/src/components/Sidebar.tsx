@@ -78,7 +78,7 @@ const Sidebar = () => {
               <TrendingUp className="w-4 h-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-sm font-display font-bold text-foreground tracking-tight">StockSeer</h1>
+              <h1 className="text-sm font-display font-bold text-foreground tracking-tight">SKUSeer</h1>
               <span className="text-[10px] text-muted-foreground">Demand Intelligence</span>
             </div>
           </div>

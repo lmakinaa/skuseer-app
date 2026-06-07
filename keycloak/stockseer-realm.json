@@ -1,7 +1,7 @@
 {
   "realm": "stockseer",
   "enabled": true,
-  "displayName": "StockSeer",
+  "displayName": "SKUSeer",
   "loginTheme": "stockseer",
   "accountTheme": "stockseer",
   "emailTheme": "stockseer",
@@ -42,7 +42,7 @@
   "clients": [
     {
       "clientId": "stockseer-frontend",
-      "name": "StockSeer Frontend",
+      "name": "SKUSeer Frontend",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,

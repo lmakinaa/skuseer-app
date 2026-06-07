@@ -291,7 +291,7 @@ const Settings = () => {
           </div>
           <div className="bg-card border border-border rounded-xl p-6">
             <h3 className="text-[15px] font-semibold text-foreground mb-1">Operating Hours</h3>
-            <p className="text-[12px] text-muted-foreground mb-4">StockSeer uses these to adjust forecasts for open/closed hours.</p>
+            <p className="text-[12px] text-muted-foreground mb-4">SKUSeer uses these to adjust forecasts for open/closed hours.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
               {["Mon – Fri", "Saturday", "Sunday", "Holidays"].map((d, i) => (
                 <div key={d} className="bg-secondary/50 rounded-lg px-4 py-3">
@@ -309,7 +309,7 @@ const Settings = () => {
         <TabsContent value="members" className="mt-5 space-y-5">
           <div className="bg-card border border-border rounded-xl p-6">
             <h3 className="text-[15px] font-semibold text-foreground mb-1">Invite a Team Member</h3>
-            <p className="text-[12px] text-muted-foreground mb-4">They'll receive an email invitation to join this store on StockSeer.</p>
+            <p className="text-[12px] text-muted-foreground mb-4">They'll receive an email invitation to join this store on SKUSeer.</p>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -507,7 +507,7 @@ const Settings = () => {
                 <Plus className="w-3.5 h-3.5" /> Create Role
               </Button>
             </div>
-            <p className="text-[12px] text-muted-foreground mb-5">Define what each role can see and do inside StockSeer.</p>
+            <p className="text-[12px] text-muted-foreground mb-5">Define what each role can see and do inside SKUSeer.</p>
 
             <div className="space-y-3">
               {roles.map((role, i) => (
@@ -542,7 +542,7 @@ const Settings = () => {
           <div className="bg-card border border-border rounded-xl p-5 mb-2">
             <h3 className="text-[14px] font-semibold text-foreground mb-1">AI Data Sources</h3>
             <p className="text-[12px] text-muted-foreground">
-              StockSeer connects to external data sources to improve forecast accuracy. Each integration feeds real-world signals into the AI models.
+              SKUSeer connects to external data sources to improve forecast accuracy. Each integration feeds real-world signals into the AI models.
             </p>
           </div>
           <div className="space-y-3">

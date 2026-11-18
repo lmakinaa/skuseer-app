@@ -1,3 +1,7 @@
+# SKUSeer — design notes
+
+Early design notes for the forecasting engine. The implemented version is described in the [README](README.md) and [`seer-engine/docs/`](seer-engine/docs/).
+
 ### 1. The Forecasting Models (The Algorithms)
 The system uses four different mathematical approaches to evaluate the data:
 * **ARIMA (The Historian):** Traditional statistical math. Looks strictly at past numbers to find simple, stable trends. Best for flat, boring data.
@@ -13,25 +17,25 @@ The AI agent manages the models through a strict pipeline:
 * **Scoring:** Compares the models' guesses against the actual hidden data and calculates the error rate for each.
 * **Execution:** Selects the model with the lowest error rate, fires the rest, and uses the winner to generate the final future forecast.
 
-### 4. The Backend (Python & FastAPI)
+### 3. The Backend (Python & FastAPI)
 The heavy-lifting engine that runs the math.
 * Built with Python using FastAPI for quick endpoint creation.
 * Uses Pandas for data manipulation.
 * Uses Scikit-learn, Prophet, and XGBoost libraries to run the actual algorithms.
 * Handles the A/B testing logic and streams the terminal logs back to the frontend.
 
-### 5. Step-by-Step Build Plan (For the Demo)
+### 4. Step-by-Step Build Plan (For the Demo)
 * **Step 1: Get Data:** Download a highly seasonal Kaggle dataset (e.g., Umbrella Sales) that includes weather columns.
 * **Step 2: Build the API:** Create a Python/FastAPI endpoint that accepts a CSV, trains Prophet and XGBoost, compares their error rates, and returns the winner.
-* **Step 3: Build the UI:** 
+* **Step 3: Build the UI:** React dashboard for uploads, forecasts and model scores.
 * **Step 4: Dockerize:** Wrap the frontend and backend in Dockerfiles and tie them together with a `docker-compose.yml` file for instant, enterprise-grade deployment.
 
 
---------------------------------------------------------------
+---
 
-Each seller target/sector may have different factors (with ai scraping tools), and for currently, we only focus on retail, so
+## Retail context tools
 
-To make your agent incredibly accurate for a retail client, you only need to build these three core tools. They are all clean, reliable API calls—no messy web scraping required.
+Different sectors are driven by different external factors; v1 targets retail. Three context tools make the forecast aware of *why* past sales moved:
 
 ### 1. The Weather & Climate Tool
 
@@ -63,5 +67,3 @@ To make your agent incredibly accurate for a retail client, you only need to bui
 ### The Developer Workflow
 
 By giving the agent access to these three tools, you turn a basic math algorithm into an intelligent retail assistant. The agent can look at a CSV, grab the weather, grab the local holidays, check the store's discount history, merge it all together, and *then* run the XGBoost model to find the actual patterns.
-
-Would you like to see how to write the exact JSON schema to wrap one of these—like the `get_weather_data` tool—so your agent knows how to call it?

@@ -1,1 +1,8 @@
-.venv
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# training / runtime output
+seer-engine/lightning_logs/
+seer-engine/logs/
